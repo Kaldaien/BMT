@@ -1,14 +1,13 @@
 #ifndef __BMT__UTILITY_H__
 #define __BMT__UTILITY_H__
 
-#include <Windows.h>
 #include <string>
 
 std::wstring  BMT_GetDocumentsDir   (void);
-BOOL          BMT_GetUserProfileDir (wchar_t* buf, DWORD* pdwLen);
+bool          BMT_GetUserProfileDir (wchar_t* buf, uint32_t* pdwLen);
 bool          BMT_IsTrue            (const wchar_t* string);
-BOOL          BMT_IsAdmin           (void);
-int           BMT_MessageBox        (std::wstring caption, std::wstring title, DWORD flags);
+bool          BMT_IsAdmin           (void);
+int           BMT_MessageBox        (std::wstring caption, std::wstring title, uint32_t flags);
 
 inline size_t
 BMT_NextPowerOfTwo (size_t x)

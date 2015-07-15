@@ -2,6 +2,7 @@
 #include "utility.h"
 
 #include <Windows.h>
+#include <cstring>
 
 xml_node<wchar_t>*
 BMT_XML_FindNode (xml_node<wchar_t>* parent_node, std::wstring name)
@@ -77,7 +78,7 @@ BMT_SaveXML (void)
 
   wsprintf (wszXML, L"%s\\WB Games\\Batman Arkham Knight\\GFXSettings.BatmanArkhamKnight.xml", documents_dir.c_str ());
 
-  wchar_t wszOut [8192];
+  wchar_t* wszOut = new wchar_t [8192];
   wchar_t* wszEnd = print (wszOut, bmak_xml, 0);
 
   int last_brace = 0;
@@ -95,13 +96,16 @@ BMT_SaveXML (void)
   FILE* fXML;
   errno_t ret = _wfopen_s (&fXML, wszXML, L"w,ccs=UTF-16LE");
 
-  if (ret != 0) {
+  if (ret != 0 || fXML == 0) {
+    delete [] wszOut;
     BMT_MessageBox (L"Could not open GFXSettings.BatmanArkhamKnight.xml for writing!\n", L"Unable to save XML settings", MB_OK | MB_ICONSTOP);
     return;
   }
 
   fputws (L"<?xml version=\"1.0\" encoding=\"UTF-16\" standalone=\"no\"?>\n", fXML);
   fputws (wszOut, fXML);
+
+  delete [] wszOut;
 
   fflush (fXML);
   fclose (fXML);
@@ -169,7 +173,7 @@ BMT_LoadXML (void)
   xml_attribute <wchar_t>* exec_cmd_attrib =
     BMT_XML_FindAttrib (BMT_XML_FindNode (bmak_application, L"EXECCMD"), L"Value");
 
-  if (exec_cmd_attrib != NULL) {
+  if (exec_cmd_attrib != NULL && install_path_attrib != NULL) {
     executable = install_path_attrib->value () + std::wstring (exec_cmd_attrib->value ()) + std::wstring (L".exe");
   }
 

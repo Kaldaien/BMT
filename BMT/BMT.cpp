@@ -1266,7 +1266,7 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       }
 
       if (LOWORD (wParam) == IDC_HARDWARE_PHYSX) {
-        hardware_physx.set_value (Button_GetCheck (GetDlgItem (hDlg, IDC_HARDWARE_PHYSX)));
+        hardware_physx.set_value (Button_GetCheck (GetDlgItem (hDlg, IDC_HARDWARE_PHYSX)) == TRUE);
 
         setup_physx_properties (hDlg);
       }

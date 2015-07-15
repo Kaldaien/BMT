@@ -98,7 +98,7 @@ BMT_GetGPUInfo (void)
 
       // Skip Microsoft's virtual adapters...
       if (adapterDesc.VendorId != 0x1414) {
-        swprintf (adapters, L"%sAdapter %02d (Vendor ID: %04X):\r\n"
+        swprintf (adapters, L"%sAdapter %02u (Vendor ID: %04X):\r\n"
           L"----------------------------------------\r\n\r\n"
           L"  %s\r\n\r\n"
           L"    %4.1f GiB Dedicated VRAM\r\n"

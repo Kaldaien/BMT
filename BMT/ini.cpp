@@ -1,11 +1,11 @@
 #define _CRT_SECURE_NO_WARNINGS
+#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
+
+#include <windows.h>
 
 #include "ini.h"
 #include "utility.h"
-
-#include <cstring>
-
-#include <Windows.h>
+#include <string>
 
 BMT_INI_File::BMT_INI_File (wchar_t* filename)
 {
@@ -17,7 +17,7 @@ BMT_INI_File::BMT_INI_File (wchar_t* filename)
 
   errno_t ret = _wfopen_s (&fINI, filename, L"rb");
 
-  if (ret == 0) {
+  if (ret == 0 && fINI != 0) {
                 fseek  (fINI, 0, SEEK_END);
     long size = ftell  (fINI);
                 rewind (fINI);
@@ -379,7 +379,7 @@ BMT_INI_File::write (std::wstring fname)
   FILE* fOut;
   errno_t ret = _wfopen_s (&fOut, fname.c_str (), L"w,ccs=UTF-16LE");
 
-  if (ret != 0) {
+  if (ret != 0 || fOut == 0) {
     BMT_MessageBox (L"ERROR: Cannot open INI file for writing. Is it read-only?", fname.c_str (), MB_OK | MB_ICONSTOP);
     return;
   }

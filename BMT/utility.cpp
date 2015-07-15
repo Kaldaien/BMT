@@ -7,7 +7,7 @@
 #pragma comment (lib, "shell32.lib")
 
 int
-BMT_MessageBox (std::wstring caption, std::wstring title, DWORD flags)
+BMT_MessageBox (std::wstring caption, std::wstring title, uint32_t flags)
 {
   extern HWND hWndApp;
 
@@ -70,18 +70,18 @@ BMT_IsTrue (const wchar_t* string)
   return true;
 }
 
-BOOL
+bool
 BMT_IsAdmin (void)
 {
-  BOOL   bRet = FALSE;
-  HANDLE hToken = NULL;
+  bool   bRet   = false;
+  HANDLE hToken = 0;
 
   if (OpenProcessToken (GetCurrentProcess (), TOKEN_QUERY, &hToken)) {
     TOKEN_ELEVATION Elevation;
     DWORD cbSize = sizeof (TOKEN_ELEVATION);
 
     if (GetTokenInformation (hToken, TokenElevation, &Elevation, sizeof (Elevation), &cbSize)) {
-      bRet = Elevation.TokenIsElevated;
+      bRet = Elevation.TokenIsElevated != 0;
     }
   }
 

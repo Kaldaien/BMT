@@ -62,7 +62,7 @@ BMT_NVAPI_ErrorMessage ( _NvAPI_Status err,
   MultiByteToWideChar (CP_OEMCP, 0, args,          -1, wszArgs,     256);
   *wszFormattedError = L'\0';
 
-  swprintf (wszFormattedError, L"Line %d of %s (in %s (...)):\n"
+  swprintf (wszFormattedError, L"Line %u of %s (in %s (...)):\n"
                                L"------------------------\n\n"
                                L"NvAPI_%s\n\n\t>> %s <<",
               line_no,
@@ -185,12 +185,12 @@ BMT_EnumNVGPUs (void)
     return adapters;
   }
 
-  NvPhysicalGpuHandle gpus [64];
+  static NvPhysicalGpuHandle gpus [64];
   NvU32 gpu_count = 0;
 
   NVAPI_CALL (EnumPhysicalGPUs (gpus, &gpu_count));
 
-  for (UINT i = 0; i < BMT_CountNVGPUs (); i++) {
+  for (INT i = 0; i < BMT_CountNVGPUs (); i++) {
     DXGI_ADAPTER_DESC adapterDesc;
 
     NvAPI_ShortString name;

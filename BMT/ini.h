@@ -1,7 +1,6 @@
 #ifndef __BMT__INI_H__
 #define __BMT__INI_H__
 
-#include <cstdio>
 #include <string>
 #include <map>
 
