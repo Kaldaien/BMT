@@ -1018,7 +1018,7 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       Button_GetIdealSize (GetDlgItem (hDlg, IDCANCEL), &size);
       SetWindowPos (GetDlgItem (hDlg, IDCANCEL), NULL, 0, 0, size.cx + 6, size.cy, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 
-      SetWindowText (hDlg, L"Batman Tweak v 0.41 (Beta)");
+      SetWindowText (hDlg, L"Batman Tweak v 0.42 (Beta HOTFIX)");
 
       hWndApp = hDlg;
 
@@ -1244,7 +1244,11 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
       if (LOWORD (wParam) == IDC_SLOW_STREAMING) {
         engine.import (std::wstring (streaming.slow));
-        BMT_OptimizeStreamingMemory ();
+
+        // Don't do this for any profile that uses the texture file cache,
+        //   that cache has a fixed-size and PoolSize must not be allowed
+        //     to exceed it.
+        //BMT_OptimizeStreamingMemory ();
       }
 
       if (LOWORD (wParam) == IDC_BALANCED_STREAMING) {

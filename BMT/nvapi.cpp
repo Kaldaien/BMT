@@ -660,10 +660,10 @@ void BMT_SaveNVDriverTweaks (HWND hDlg)
     prerender_limit.version = NVDRS_SETTING_VER;
 
     NVAPI_SET_DWORD (prerender_limit, setting_id, get_prerendered_frames (hDlg));
-    NVAPI_CALL (DRS_SetSetting (hSession, hProfile, &prerender_limit));
+    NVAPI_CALL      (DRS_SetSetting (hSession, hProfile, &prerender_limit));
 
     NVAPI_SET_DWORD (power_policy, PREFERRED_PSTATE_ID, get_power_policy (hDlg));
-    NVAPI_CALL (DRS_SetSetting (hSession, hProfile, &power_policy));
+    NVAPI_CALL      (DRS_SetSetting (hSession, hProfile, &power_policy));
 
     // Don't save this stuff if there's only 1 GPU...
     if (BMT_CountNVGPUs () > 1) {
@@ -684,7 +684,7 @@ void BMT_SaveNVDriverTweaks (HWND hDlg)
 
     NVDRS_SETTING lodbias_auto_adjust;
     NVAPI_SET_DWORD (lodbias_auto_adjust, AUTO_LODBIASADJUST_ID, 1);
-    NVAPI_CALL (DRS_SetSetting (hSession, hProfile, &lodbias_auto_adjust));
+    NVAPI_CALL      (DRS_SetSetting (hSession, hProfile, &lodbias_auto_adjust));
 
     NVAPI_SET_DWORD (lodbias.adjust, LODBIASADJUST_ID, lodbias.poll_adjust ());
     NVAPI_CALL      (DRS_SetSetting (hSession, hProfile, &lodbias.adjust));
@@ -694,7 +694,7 @@ void BMT_SaveNVDriverTweaks (HWND hDlg)
 
     if (support_mfaa) {
       NVAPI_SET_DWORD (mfaa, MAXWELL_B_SAMPLE_INTERLEAVE_ID, get_mfaa (hDlg));
-      NVAPI_CALL (DRS_SetSetting (hSession, hProfile, &mfaa));
+      NVAPI_CALL      (DRS_SetSetting (hSession, hProfile, &mfaa));
     }
   }
 

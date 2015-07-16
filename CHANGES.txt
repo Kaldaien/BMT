@@ -1,0 +1,20 @@
+v 0.42
+------
++ Set PoolSize for the slow profile back to 1024
+ >> This profile uses a file cache with a fixed-size and the GART optimization will exceed that size causing the game to crash
+
+v 0.41
+------
++ Added icons to important buttons to make the GUI slightly less confusing
++ Added NVIDIA driver version to the GPU Info section
++ Improved efficiency of NVAPI DRS (driver settings) load/store
+
+v 0.40
+------
++ Aligns PhysX memory pools to power-of-two
++ Tunes streaming texture memory pool size to match AGP/PCIe GART (System Shared Memory)
++ Scales back Optimized TexGroup settings for AMD compatibility
++ Enables Async Defrag in Balanced streaming profile
++ Decouples DetailMode from "Level of Detail" setting (will add a new option for this later)
++ Corrects issue preventing Level of Detail and Shadow Quality from being set individually
++ Add Disable, 1 and 60 to Visibility options (these settings are for debugging, don't touch them)
