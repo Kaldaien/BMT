@@ -36,6 +36,8 @@ public:
     std::multimap <std::wstring, std::wstring> pairs;
   };
 
+  const std::map <std::wstring, Section>& get_sections (void);
+
   Section& get_section      (std::wstring section);
   bool     contains_section (std::wstring section);
 

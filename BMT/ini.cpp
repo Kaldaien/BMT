@@ -407,3 +407,10 @@ BMT_INI_File::write (std::wstring fname)
   fflush (fOut);
   fclose (fOut);
 }
+
+
+const std::map <std::wstring, BMT_INI_File::Section>&
+BMT_INI_File::get_sections (void)
+{
+  return sections;
+}
