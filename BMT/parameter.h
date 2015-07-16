@@ -5,27 +5,31 @@
 #include "xml.h"
 
 #include <Windows.h>
+#include <vector>
 
-class BMT_UI_Control {
-public:
-  BMT_UI_Control (void) {
-    handle = NULL;
-  }
+namespace bmt {
+  namespace UI {
 
-  virtual std::wstring get_value_str (void) = 0;
-  virtual void         set_value_str (std::wstring val_str) = 0;
+class Control {
+  public:
+    Control (void) {
+      handle = NULL;
+    }
 
-  BOOL         exists        (void)                 { return IsWindow (handle); }
+    virtual std::wstring get_value_str (void) = 0;
+    virtual void         set_value_str (std::wstring val_str) = 0;
 
-protected:
-  HWND    handle;
+    BOOL         exists (void) { return IsWindow (handle); }
 
-private:
+  protected:
+    HWND    handle;
+
+  private:
 };
 
-class BMT_EditBox : public BMT_UI_Control {
+class EditBox : public Control {
 public:
-  BMT_EditBox (HWND hWnd) {
+  EditBox (HWND hWnd) {
     handle = hWnd;
   }
 
@@ -33,9 +37,9 @@ public:
   virtual void         set_value_str (std::wstring val_str);
 };
 
-class BMT_CheckBox : public BMT_UI_Control {
+class CheckBox : public Control {
 public:
-  BMT_CheckBox (HWND hWnd) {
+  CheckBox (HWND hWnd) {
     handle  = hWnd;
     numeric = false; // When true, input will be 1/0 and output will be 1/0
   }
@@ -47,23 +51,21 @@ private:
   bool numeric;
 };
 
-template <typename _T>
-class BMT_Parameter {
+};
+
+class iParameter {
 public:
-  BMT_Parameter (void) {
+  iParameter (void) {
     xml_attrib = nullptr;
     ini        = nullptr;
     ui_control = nullptr;
   }
 
   virtual std::wstring get_value_str (void) = 0;
-  virtual _T           get_value     (void) = 0;
-
-  virtual void         set_value     (_T val)           = 0;
   virtual void         set_value_str (std::wstring str) = 0;
 
   // Read value from INI or XML
-  bool load  (void)
+  bool load (void)
   {
     if (xml_attrib != nullptr) {
       set_value_str (xml_attrib->value ());
@@ -122,14 +124,13 @@ public:
     }
   }
 
-  void bind_to_control (BMT_UI_Control* ui_ctl)
+  void bind_to_control (UI::Control* ui_ctl)
   {
     ui_control = ui_ctl;
   }
 
 protected:
-  _T                       value;
-  BMT_UI_Control*          ui_control;
+  UI::Control*             ui_control;
   wchar_t                  backing_string [64]; // Required by XML
 
 private:
@@ -139,7 +140,20 @@ private:
   std::wstring             ini_key;
 };
 
-class BMT_Parameter_Int : public BMT_Parameter <int>
+template <typename _T>
+class Parameter : public iParameter {
+public:
+  virtual std::wstring get_value_str (void) = 0;
+  virtual _T           get_value     (void) = 0;
+
+  virtual void         set_value     (_T val)           = 0;
+  virtual void         set_value_str (std::wstring str) = 0;
+
+protected:
+  _T                       value;
+};
+
+class ParameterInt : public Parameter <int>
 {
 public:
   std::wstring get_value_str (void);
@@ -152,7 +166,7 @@ protected:
   int value;
 };
 
-class BMT_Parameter_Int64 : public BMT_Parameter <int64_t>
+class ParameterInt64 : public Parameter <int64_t>
 {
 public:
   std::wstring get_value_str (void);
@@ -165,7 +179,7 @@ protected:
   int64_t value;
 };
 
-class BMT_Parameter_Bool : public BMT_Parameter <bool>
+class ParameterBool : public Parameter <bool>
 {
 public:
   std::wstring get_value_str (void);
@@ -178,7 +192,7 @@ protected:
   bool value;
 };
 
-class BMT_Parameter_Float : public BMT_Parameter <float>
+class ParameterFloat : public Parameter <float>
 {
 public:
   std::wstring get_value_str (void);
@@ -190,4 +204,64 @@ public:
 protected:
   float value;
 };
+
+class ParameterFactory {
+public:
+  template <typename _T> iParameter* create_parameter  (const wchar_t* name);
+protected:
+private:
+  std::vector <iParameter *> params;
+} static g_ParameterFactory;
+
+}
+
+
+bmt::ParameterInt*  refresh_rate;
+bmt::ParameterInt* res_x;
+bmt::ParameterInt* res_y;
+bmt::ParameterInt* max_fps;
+
+bmt::ParameterBool* use_vsync;
+bmt::ParameterBool* smooth_framerate;
+
+bmt::ParameterInt*  smoothed_min;
+bmt::ParameterInt*  smoothed_max;
+
+
+bmt::ParameterBool*  hardware_physx;
+bmt::ParameterInt*   physx_level;
+bmt::ParameterInt64* physx_heap_size;
+bmt::ParameterInt64* physx_mesh_cache;
+
+bmt::ParameterInt*  blur_samples;
+
+bmt::ParameterInt*  anisotropy;
+bmt::ParameterInt*  texture_res;
+
+bmt::ParameterBool* enable_dx10;
+bmt::ParameterBool* enable_dx11;
+bmt::ParameterBool* enable_crossfire;
+
+bmt::ParameterInt*  level_of_detail;
+bmt::ParameterInt*  level_of_detail2; // Temp hack, need a way to store parameters in multiple INI keys
+bmt::ParameterInt*  shadow_quality;
+bmt::ParameterInt*  antialiasing;
+
+bmt::ParameterBool*  interactive_debris;
+bmt::ParameterBool*  interactive_smoke;
+bmt::ParameterBool*  enhanced_rain;
+bmt::ParameterBool*  enhanced_lightshafts;
+
+bmt::ParameterFloat* mip_fadein0;
+bmt::ParameterFloat* mip_fadein1;
+
+bmt::ParameterFloat* mip_fadeout0;
+bmt::ParameterFloat* mip_fadeout1;
+
+bmt::ParameterFloat* shadow_scale;
+
+bmt::ParameterInt*   framerate_limiting;
+bmt::ParameterFloat* max_delta_time;
+bmt::ParameterInt*   visibility_frames;
+
 #endif /* __BMT__PARAMETER_H__ */

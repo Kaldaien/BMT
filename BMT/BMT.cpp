@@ -4,21 +4,24 @@
 #define _CRT_SECURE_NO_WARNINGS
 
 #include "stdafx.h"
+
 #include "BMT.h"
+#include "ini.h"
+#include "xml.h"
+#include "parameter.h"
+#include "utility.h"
 
 #include <cstdio>
 
-HWND hWndApp;
+#include <windowsx.h>
+#include <dxgi.h>
+#include <CommCtrl.h> // Button_GetIdealSize
 
-#include "ini.h"
-
-
+#pragma comment(lib, "Comctl32.lib")
 
 INT_PTR CALLBACK  Config (HWND, UINT, WPARAM, LPARAM);
 
-#include "xml.h"
-
-#include <CommCtrl.h>
+HWND  hWndApp;
 HICON bmt_icon;
 HICON nv_icon;
 
@@ -36,9 +39,6 @@ int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
 
   return (int)DialogBox (hInstance, MAKEINTRESOURCE (IDD_BATMAN), NULL, Config);
 }
-
-#include "utility.h"
-#include "windowsx.h"
 
 struct streaming_profiles {
   const wchar_t* default =
@@ -364,66 +364,14 @@ struct mip_fadeout_profiles {
 } fadeout;
 
 
-
-#include "parameter.h"
-BMT_Parameter_Int refresh_rate;
-BMT_Parameter_Int res_x;
-BMT_Parameter_Int res_y;
-BMT_Parameter_Int max_fps;
-
-BMT_Parameter_Bool use_vsync;
-BMT_Parameter_Bool smooth_framerate;
-
-BMT_Parameter_Int  smoothed_min;
-BMT_Parameter_Int  smoothed_max;
-
-
-BMT_Parameter_Bool  hardware_physx;
-BMT_Parameter_Int   physx_level;
-BMT_Parameter_Int64 physx_heap_size;
-BMT_Parameter_Int64 physx_mesh_cache;
-
-BMT_Parameter_Int  blur_samples;
-
-BMT_Parameter_Int  anisotropy;
-BMT_Parameter_Int  texture_res;
-
-BMT_Parameter_Bool enable_dx10;
-BMT_Parameter_Bool enable_dx11;
-BMT_Parameter_Bool enable_crossfire;
-
-BMT_Parameter_Int  level_of_detail;
-BMT_Parameter_Int  level_of_detail2; // Temp hack, need a way to store parameters in multiple INI keys
-BMT_Parameter_Int  shadow_quality;
-BMT_Parameter_Int  antialiasing;
-
-BMT_Parameter_Bool  interactive_debris;
-BMT_Parameter_Bool  interactive_smoke;
-BMT_Parameter_Bool  enhanced_rain;
-BMT_Parameter_Bool  enhanced_lightshafts;
-
-BMT_Parameter_Float mip_fadein0;
-BMT_Parameter_Float mip_fadein1;
-
-BMT_Parameter_Float mip_fadeout0;
-BMT_Parameter_Float mip_fadeout1;
-
-BMT_Parameter_Float shadow_scale;
-
-BMT_Parameter_Int   framerate_limiting;
-BMT_Parameter_Float max_delta_time;
-BMT_Parameter_Int   visibility_frames;
-
-
-#include <dxgi.h>
-
 extern size_t BMT_GetGPUVRAM (void);
 extern size_t BMT_GetGART    (void);
 
-extern int BMT_CountNVGPUs (void);
+extern int          BMT_CountNVGPUs        (void);
+extern void         BMT_NVAPI_Init         (void);
+extern std::wstring BMT_GetNVDriverVersion (void);
 
 extern DXGI_ADAPTER_DESC* BMT_EnumNVGPUs (void);
-
 
 void tune_physx_memory (HWND hDlg, size_t& heap, size_t& mesh_cache)
 {
@@ -443,15 +391,11 @@ void tune_physx_memory (HWND hDlg, size_t& heap, size_t& mesh_cache)
   }
 }
 
-#include <CommCtrl.h>
-#pragma comment(lib, "Comctl32.lib")
 
 void setup_driver_tweaks (HWND hDlg)
 {
   // If there is an NV GPU installed, display a special button!
   if (BMT_CountNVGPUs () > 0) {
-    extern std::wstring BMT_GetNVDriverVersion (void);
-
     std::wstring button_label = L"    NVIDIA Driver Tweaks\r\n    (Version: ";
     button_label += BMT_GetNVDriverVersion ();
     button_label += L")";
@@ -476,7 +420,7 @@ void setup_physx_properties (HWND hDlg)
   }
   else {
     Button_Enable (GetDlgItem (hDlg, IDC_HARDWARE_PHYSX), false);
-    hardware_physx.set_value (true);
+    hardware_physx->set_value (true);
   }
 
   Button_Enable   (GetDlgItem (hDlg, IDC_HIGH_PHYSX),    false);
@@ -484,7 +428,7 @@ void setup_physx_properties (HWND hDlg)
   ComboBox_Enable (GetDlgItem (hDlg, IDC_PHYSX_GPU),     false);
   Button_Enable   (GetDlgItem (hDlg, IDC_PHYSX_MEMTUNE), false);
 
-  if (! hardware_physx.get_value ()) {
+  if (! hardware_physx->get_value ()) {
     Button_Enable (GetDlgItem (hDlg, IDC_HIGH_PHYSX), true);
 
     int cur_sel = ComboBox_GetCurSel (GetDlgItem (hDlg, IDC_PHYSX_GPU));
@@ -524,17 +468,26 @@ int get_level_of_detail (HWND hDlg)
 
 void setup_shadow_quality (HWND hDlg)
 {
-  ComboBox_ResetContent (GetDlgItem (hDlg, IDC_SHADOW_QUALITY));
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_SHADOW_QUALITY), 0, L"Low");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_SHADOW_QUALITY), 1, L"Normal");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_SHADOW_QUALITY), 2, L"High");
+  HWND hWndShadowQuality = GetDlgItem (hDlg, IDC_SHADOW_QUALITY);
 
-  if (shadow_quality.get_value () == 0)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_SHADOW_QUALITY), 0);
-  else if (shadow_quality.get_value () == 1)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_SHADOW_QUALITY), 1);
-  else
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_SHADOW_QUALITY), 2);
+  ComboBox_ResetContent (hWndShadowQuality);
+  ComboBox_InsertString (hWndShadowQuality, 0, L"Low");
+  ComboBox_InsertString (hWndShadowQuality, 1, L"Normal");
+  ComboBox_InsertString (hWndShadowQuality, 2, L"High");
+
+  switch (shadow_quality->get_value ())
+  {
+    case 0:
+      ComboBox_SetCurSel (hWndShadowQuality, 0);
+      break;
+    default:
+    case 1:
+      ComboBox_SetCurSel (hWndShadowQuality, 1);
+      break;
+    case 2:
+      ComboBox_SetCurSel (hWndShadowQuality, 2);
+      break;
+  }
 }
 
 int get_shadow_quality (HWND hDlg)
@@ -551,17 +504,26 @@ int get_shadow_quality (HWND hDlg)
 
 void setup_level_of_detail (HWND hDlg)
 {
-  ComboBox_ResetContent (GetDlgItem (hDlg, IDC_LEVEL_OF_DETAIL));
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_LEVEL_OF_DETAIL), 0, L"Low");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_LEVEL_OF_DETAIL), 1, L"Normal");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_LEVEL_OF_DETAIL), 2, L"High");
+  HWND hWnd_LOD = GetDlgItem (hDlg, IDC_LEVEL_OF_DETAIL);
 
-  if (level_of_detail.get_value () == 0)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_LEVEL_OF_DETAIL), 0);
-  else if (level_of_detail.get_value () == 1)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_LEVEL_OF_DETAIL), 1);
-  else
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_LEVEL_OF_DETAIL), 2);
+  ComboBox_ResetContent (hWnd_LOD);
+  ComboBox_InsertString (hWnd_LOD, 0, L"Low");
+  ComboBox_InsertString (hWnd_LOD, 1, L"Normal");
+  ComboBox_InsertString (hWnd_LOD, 2, L"High");
+
+  switch (level_of_detail->get_value ())
+  {
+    case 0:
+      ComboBox_SetCurSel (hWnd_LOD, 0);
+      break;
+    case 1:
+      ComboBox_SetCurSel (hWnd_LOD, 1);
+      break;
+    case 2:
+    default:
+      ComboBox_SetCurSel (hWnd_LOD, 2);
+      break;
+  }
 }
 
 int get_blur_samples (HWND hDlg)
@@ -578,38 +540,57 @@ int get_blur_samples (HWND hDlg)
 
 void setup_blur_samples (HWND hDlg)
 {
-  ComboBox_ResetContent (GetDlgItem (hDlg, IDC_COMBO3));
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_COMBO3), 0, L"2 (Low Quality)");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_COMBO3), 1, L"4 (Medium Quality)");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_COMBO3), 2, L"16 (High Quality)");
+  HWND hWndBlurSamples = GetDlgItem (hDlg, IDC_COMBO3);
 
-  if (blur_samples.get_value () == 2)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_COMBO3), 0);
-  else if (blur_samples.get_value () == 4)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_COMBO3), 1);
+  ComboBox_ResetContent (hWndBlurSamples);
+  ComboBox_InsertString (hWndBlurSamples, 0, L"2 (Low Quality)");
+  ComboBox_InsertString (hWndBlurSamples, 1, L"4 (Medium Quality)");
+  ComboBox_InsertString (hWndBlurSamples, 2, L"16 (High Quality)");
+
+  if (blur_samples->get_value () == 2)
+    ComboBox_SetCurSel (hWndBlurSamples, 0);
+  else if (blur_samples->get_value () == 4)
+    ComboBox_SetCurSel (hWndBlurSamples, 1);
   else
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_COMBO3), 2);
+    ComboBox_SetCurSel (hWndBlurSamples, 2);
 }
 
 void setup_tex_filter (HWND hDlg)
 {
-  ComboBox_ResetContent (GetDlgItem (hDlg, IDC_ANISOTROPY));
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_ANISOTROPY), 0, L"Trilinear");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_ANISOTROPY), 1, L"2x Anisotropic");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_ANISOTROPY), 2, L"4x Anisotropic");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_ANISOTROPY), 3, L"8x Anisotropic");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_ANISOTROPY), 4, L"16x Anisotropic");
+  HWND hWndAnisotropy = GetDlgItem (hDlg, IDC_ANISOTROPY);
 
-  if (anisotropy.get_value () == 1)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_ANISOTROPY), 0);
-  else if (anisotropy.get_value () == 2)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_ANISOTROPY), 1);
-  else if (anisotropy.get_value () == 4)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_ANISOTROPY), 2);
-  else if (anisotropy.get_value () == 8)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_ANISOTROPY), 3);
-  else
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_ANISOTROPY), 4);
+  ComboBox_ResetContent (hWndAnisotropy);
+  ComboBox_InsertString (hWndAnisotropy, 0, L"Trilinear");
+  ComboBox_InsertString (hWndAnisotropy, 1, L"2x Anisotropic");
+  ComboBox_InsertString (hWndAnisotropy, 2, L"4x Anisotropic");
+  ComboBox_InsertString (hWndAnisotropy, 3, L"8x Anisotropic");
+  ComboBox_InsertString (hWndAnisotropy, 4, L"16x Anisotropic");
+
+  switch (anisotropy->get_value ()) {
+    case 1:
+      // 1 sample = Bilinear + Linear/Point filter on Mip
+      ComboBox_SetCurSel (hWndAnisotropy, 0);
+      break;
+    case 2:
+      // 2X AF
+      ComboBox_SetCurSel (hWndAnisotropy, 1);
+      break;
+
+      /// Believe it or not, anisotropy doesn't have to be a power-of-two
+      ///   or even an integer... but the Unreal engine might not accept
+      ///     those sorts of values, so let's not confuse it ;)
+
+    default: // Always fallback to 4x AF if bad values are passed.
+    case 4:  // 4x AF
+      ComboBox_SetCurSel (hWndAnisotropy, 2);
+      break;
+    case 8: // 8x AF
+      ComboBox_SetCurSel (hWndAnisotropy, 3);
+      break;
+    case 16: // 16x AF
+      ComboBox_SetCurSel (hWndAnisotropy, 4);
+      break;
+  }
 }
 
 int get_tex_filter (HWND hDlg)
@@ -630,14 +611,16 @@ int get_tex_filter (HWND hDlg)
 
 void setup_tex_res (HWND hDlg)
 {
-  ComboBox_ResetContent (GetDlgItem (hDlg, IDC_TEXTURE_RES));
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_TEXTURE_RES), 0, L"Low (128x128 - 512x512) - 2 GiB VRAM");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_TEXTURE_RES), 1, L"Normal (128x128 - 1024x1024) - 4 GiB VRAM");
+  HWND hWndTexRes = GetDlgItem (hDlg, IDC_TEXTURE_RES);
 
-  if (texture_res.get_value () == 0)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_TEXTURE_RES), 0);
+  ComboBox_ResetContent (hWndTexRes);
+  ComboBox_InsertString (hWndTexRes, 0, L"Low (128x128 - 512x512) - 2 GiB VRAM");
+  ComboBox_InsertString (hWndTexRes, 1, L"Normal (128x128 - 1024x1024) - 4 GiB VRAM");
+
+  if (texture_res->get_value () == 0)
+    ComboBox_SetCurSel (hWndTexRes, 0);
   else
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_TEXTURE_RES), 1);
+    ComboBox_SetCurSel (hWndTexRes, 1);
 
   // This limits us to Low/Normal -- CODE WILL NEED TO BE CHANGED IF HIGH EVER
   //                                   HAPPENS...
@@ -650,29 +633,33 @@ int get_tex_res (HWND hDlg)
 
 void setup_shadow_scale (HWND hDlg)
 {
-  ComboBox_ResetContent (GetDlgItem (hDlg, IDC_SHADOW_SCALE));
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_SHADOW_SCALE), 0, L"0.25 (Ideal: 4K)");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_SHADOW_SCALE), 1, L"0.666 (Ideal: 1440p)");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_SHADOW_SCALE), 2, L"1.0 (Ideal: 1080p)");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_SHADOW_SCALE), 3, L"2.0 (High Quality)");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_SHADOW_SCALE), 4, L"4.0 (Ultra Quality)");
+  HWND hWndShadowScale = GetDlgItem (hDlg, IDC_SHADOW_SCALE);
 
-  if (shadow_scale.get_value () <= 0.25f)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_SHADOW_SCALE), 0);
-  else if (shadow_scale.get_value () <= 0.6667f)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_SHADOW_SCALE), 1);
-  else if (shadow_scale.get_value () <= 1.0f)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_SHADOW_SCALE), 2);
-  else if (shadow_scale.get_value () <= 2.0f)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_SHADOW_SCALE), 3);
-  else if (shadow_scale.get_value () <= 4.0f)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_SHADOW_SCALE), 4);
+  ComboBox_ResetContent (hWndShadowScale);
+  ComboBox_InsertString (hWndShadowScale, 0, L"0.25 (Ideal: 4K)");
+  ComboBox_InsertString (hWndShadowScale, 1, L"0.666 (Ideal: 1440p)");
+  ComboBox_InsertString (hWndShadowScale, 2, L"1.0 (Ideal: 1080p)");
+  ComboBox_InsertString (hWndShadowScale, 3, L"2.0 (High Quality)");
+  ComboBox_InsertString (hWndShadowScale, 4, L"4.0 (Ultra Quality)");
+
+  const float shadow_scale_val = shadow_scale->get_value ();
+
+  if (shadow_scale_val <= 0.25f)
+    ComboBox_SetCurSel (hWndShadowScale, 0);
+  else if (shadow_scale_val <= 0.6667f)
+    ComboBox_SetCurSel (hWndShadowScale, 1);
+  else if (shadow_scale_val <= 1.0f)
+    ComboBox_SetCurSel (hWndShadowScale, 2);
+  else if (shadow_scale_val <= 2.0f)
+    ComboBox_SetCurSel (hWndShadowScale, 3);
+  else if (shadow_scale_val <= 4.0f)
+    ComboBox_SetCurSel (hWndShadowScale, 4);
 
   // Sane fallback
   else
   {
-    shadow_scale.set_value (1.0f);
-    setup_shadow_scale (hDlg);
+    shadow_scale->set_value (1.0f);
+    setup_shadow_scale      (hDlg);
   }
 }
 
@@ -697,15 +684,15 @@ float get_shadow_scale (HWND hDlg)
 
 void setup_fadein (HWND hDlg)
 {
-  if (mip_fadein0.get_value () == 0.3f &&
-      mip_fadein1.get_value () == 2.0f) {
-    Button_SetCheck (GetDlgItem (hDlg, IDC_FADEIN_DEFAULT), true);
-    Button_SetCheck (GetDlgItem (hDlg, IDC_FADEIN_INSTANT), false);
-  }
-  else {
-    Button_SetCheck (GetDlgItem (hDlg, IDC_FADEIN_DEFAULT), false);
-    Button_SetCheck (GetDlgItem (hDlg, IDC_FADEIN_INSTANT), true);
-  }
+  HWND hWndFadeInDefault = GetDlgItem (hDlg, IDC_FADEIN_DEFAULT),
+       hWndFadeInInstant = GetDlgItem (hDlg, IDC_FADEIN_INSTANT);
+
+  bool default = (mip_fadein0->get_value () == 0.3f &&
+                  mip_fadein1->get_value () == 2.0f);
+  bool instant = (! default);
+
+  Button_SetCheck (hWndFadeInDefault, default);
+  Button_SetCheck (hWndFadeInInstant, instant);
 }
 
 void store_fadein (HWND hDlg)
@@ -718,15 +705,15 @@ void store_fadein (HWND hDlg)
 
 void setup_fadeout (HWND hDlg)
 {
-  if (mip_fadeout0.get_value () == 0.1f &&
-      mip_fadeout1.get_value () == 1.0f) {
-    Button_SetCheck (GetDlgItem (hDlg, IDC_FADEOUT_DEFAULT), true);
-    Button_SetCheck (GetDlgItem (hDlg, IDC_FADEOUT_INSTANT), false);
-  }
-  else {
-    Button_SetCheck (GetDlgItem (hDlg, IDC_FADEOUT_DEFAULT), false);
-    Button_SetCheck (GetDlgItem (hDlg, IDC_FADEOUT_INSTANT), true);
-  }
+  HWND hWndFadeOutDefault = GetDlgItem (hDlg, IDC_FADEOUT_DEFAULT),
+       hWndFadeOutInstant = GetDlgItem (hDlg, IDC_FADEOUT_INSTANT);
+
+  bool default = (mip_fadeout0->get_value () == 0.1f &&
+                  mip_fadeout1->get_value () == 1.0f);
+  bool instant = (! default);
+
+  Button_SetCheck (hWndFadeOutDefault, default);
+  Button_SetCheck (hWndFadeOutInstant, instant);
 }
 
 void store_fadeout (HWND hDlg)
@@ -740,23 +727,34 @@ void store_fadeout (HWND hDlg)
 
 void setup_framerate_limiting (HWND hDlg)
 {
-  ComboBox_ResetContent (GetDlgItem (hDlg, IDC_FRAME_RATE_LIMITING));
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_FRAME_RATE_LIMITING), 0, L"0   (All Bits Off)");//   -00000000)");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_FRAME_RATE_LIMITING), 1, L"7   (Default)");//   -00000111)");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_FRAME_RATE_LIMITING), 2, L"14  (Double Default)");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_FRAME_RATE_LIMITING), 3, L"15  (Low 4 Bits On)");//  -00001111)");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_FRAME_RATE_LIMITING), 4, L"255 (All Bits On)");// -11111111)");
+  HWND hWndFrameRateLimiting = GetDlgItem (hDlg, IDC_FRAME_RATE_LIMITING);
 
-  if (framerate_limiting.get_value () == 0)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_FRAME_RATE_LIMITING), 0);
-  else if (framerate_limiting.get_value () == 7)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_FRAME_RATE_LIMITING), 1);
-  else if (framerate_limiting.get_value () == 14)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_FRAME_RATE_LIMITING), 2);
-  else if (framerate_limiting.get_value () == 15)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_FRAME_RATE_LIMITING), 3);
-  else
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_FRAME_RATE_LIMITING), 4);
+  ComboBox_ResetContent (hWndFrameRateLimiting);
+  ComboBox_InsertString (hWndFrameRateLimiting, 0, L"0   (All Bits Off)");  // 00000000
+  ComboBox_InsertString (hWndFrameRateLimiting, 1, L"7   (Default)");       // 00000111
+  ComboBox_InsertString (hWndFrameRateLimiting, 2, L"14  (Double Default)");// 00001110
+  ComboBox_InsertString (hWndFrameRateLimiting, 3, L"15  (Low 4 Bits On)"); // 00001111
+  ComboBox_InsertString (hWndFrameRateLimiting, 4, L"255 (All Bits On)");   // 11111111
+
+  switch (framerate_limiting->get_value ())
+  {
+    case 0:
+      ComboBox_SetCurSel (hWndFrameRateLimiting, 0);
+      break;
+    default:
+    case 7:
+      ComboBox_SetCurSel (hWndFrameRateLimiting, 1);
+      break;
+    case 14:
+      ComboBox_SetCurSel (hWndFrameRateLimiting, 2);
+      break;
+    case 15:
+      ComboBox_SetCurSel (hWndFrameRateLimiting, 3);
+      break;
+    case 255:
+      ComboBox_SetCurSel (hWndFrameRateLimiting, 4);
+      break;
+  }
 }
 
 int get_framerate_limiting (HWND hDlg)
@@ -775,7 +773,10 @@ int get_framerate_limiting (HWND hDlg)
   if (cur_sel == 3)
     return 15;
 
-  return 255;
+  if (cur_sel == 4)
+    return 255;
+
+  return 7;
 }
 
 bool BMT_EpsilonTest (float in, float test)
@@ -790,87 +791,110 @@ bool BMT_EpsilonTest (float in, float test)
 
 void setup_max_delta_time (HWND hDlg)
 {
-  ComboBox_ResetContent (GetDlgItem (hDlg, IDC_MAX_DELTA_TIME));
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_MAX_DELTA_TIME), 0, L"Default (0.0416666)");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_MAX_DELTA_TIME), 1, L"Alternate #1 (0.0624999)");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_MAX_DELTA_TIME), 2, L"Alternate #2 (0.0833332)");
+  HWND hWndMaxDeltaTime = GetDlgItem (hDlg, IDC_MAX_DELTA_TIME);
 
-  const float epsilon = 0.0001f;
+  ComboBox_ResetContent (hWndMaxDeltaTime);
+  ComboBox_InsertString (hWndMaxDeltaTime, 0, L"Default (0.0416666)");
+  ComboBox_InsertString (hWndMaxDeltaTime, 1, L"Alternate #1 (0.0624999)");
+  ComboBox_InsertString (hWndMaxDeltaTime, 2, L"Alternate #2 (0.0833332)");
+  ComboBox_InsertString (hWndMaxDeltaTime, 3, L" * Test Only (0.0)");
 
-  if (BMT_EpsilonTest (0.041666f, max_delta_time.get_value ()))
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_MAX_DELTA_TIME), 0);
-  else if (BMT_EpsilonTest (0.0624999f, max_delta_time.get_value ()))
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_MAX_DELTA_TIME), 1);
-  else if (BMT_EpsilonTest (0.0833332f, max_delta_time.get_value ()))
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_MAX_DELTA_TIME), 2);
+  const float epsilon  = 0.0001f;
+  const float test_val = max_delta_time->get_value ();
+
+  if (BMT_EpsilonTest (0.041666f, test_val))
+    ComboBox_SetCurSel (hWndMaxDeltaTime, 0);
+  else if (BMT_EpsilonTest (0.0624999f, test_val))
+    ComboBox_SetCurSel (hWndMaxDeltaTime, 1);
+  else if (BMT_EpsilonTest (0.0833332f, test_val))
+    ComboBox_SetCurSel (hWndMaxDeltaTime, 2);
+  else if (BMT_EpsilonTest (0.0000f, test_val))
+    ComboBox_SetCurSel (hWndMaxDeltaTime, 3);
 
   // Sane default
   else
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_MAX_DELTA_TIME), 0);
+    ComboBox_SetCurSel (hWndMaxDeltaTime, 0);
 }
 
 float get_max_delta_time (HWND hDlg)
 {
-  if (ComboBox_GetCurSel (GetDlgItem (hDlg, IDC_MAX_DELTA_TIME)) == 0)
-    return 0.0416666f;
-  else if (ComboBox_GetCurSel (GetDlgItem (hDlg, IDC_MAX_DELTA_TIME)) == 1)
-    return 0.0624999f;
-  else if (ComboBox_GetCurSel (GetDlgItem (hDlg, IDC_MAX_DELTA_TIME)) == 2)
-    return 0.0833332f;
+  HWND hWndMaxDeltaTime = GetDlgItem (hDlg, IDC_MAX_DELTA_TIME);
 
-  // Sane default
-  return 0.0416666f;
+  switch (ComboBox_GetCurSel (hWndMaxDeltaTime))
+  {
+    default:
+    case 0:
+      return 0.0416666f;
+    case 1:
+      return 0.0624999f;
+    case 2:
+      return 0.0833332f;
+    case 3:
+      return 0.0f;
+  }
 }
 
 void setup_visibility_frames (HWND hDlg)
 {
-  ComboBox_ResetContent (GetDlgItem (hDlg, IDC_VISIBILITY));
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_VISIBILITY), 0, L"* Disable");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_VISIBILITY), 1, L"* 1 Frame");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_VISIBILITY), 2, L"7 Frames");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_VISIBILITY), 3, L"8 Frames (Default)");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_VISIBILITY), 4, L"9 Frames");
-  ComboBox_InsertString (GetDlgItem (hDlg, IDC_VISIBILITY), 5, L"* 60 Frames");
+  HWND hWndVisibility = GetDlgItem (hDlg, IDC_VISIBILITY);
 
-  if (visibility_frames.get_value () == 0)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_VISIBILITY), 0);
-  else if (visibility_frames.get_value () == 1)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_VISIBILITY), 1);
-  else if (visibility_frames.get_value () == 7)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_VISIBILITY), 2);
-  else if (visibility_frames.get_value () == 8)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_VISIBILITY), 3);
-  else if (visibility_frames.get_value () == 9)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_VISIBILITY), 4);
-  else if (visibility_frames.get_value () == 60)
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_VISIBILITY), 5);
-  else
-    ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_VISIBILITY), 3);
+  ComboBox_ResetContent (hWndVisibility);
+  ComboBox_InsertString (hWndVisibility, 0, L"* Disable");
+  ComboBox_InsertString (hWndVisibility, 1, L"* 1 Frame");
+  ComboBox_InsertString (hWndVisibility, 2, L"7 Frames");
+  ComboBox_InsertString (hWndVisibility, 3, L"8 Frames (Default)");
+  ComboBox_InsertString (hWndVisibility, 4, L"9 Frames");
+  ComboBox_InsertString (hWndVisibility, 5, L"* 60 Frames");
+
+  switch (visibility_frames->get_value ())
+  {
+    case 0:
+      ComboBox_SetCurSel (hWndVisibility, 0);
+      break;
+    case 1:
+      ComboBox_SetCurSel (hWndVisibility, 1);
+      break;
+    case 7:
+      ComboBox_SetCurSel (hWndVisibility, 2);
+      break;
+    default:
+    case 8:
+      ComboBox_SetCurSel (hWndVisibility, 3);
+      break;
+    case 9:
+      ComboBox_SetCurSel (hWndVisibility, 4);
+      break;
+    case 60:
+      ComboBox_SetCurSel (hWndVisibility, 5);
+      break;
+  }
 }
 
 int get_visibility_frames (HWND hDlg)
 {
   int cur_sel = ComboBox_GetCurSel (GetDlgItem (hDlg, IDC_VISIBILITY));
 
-  if (cur_sel == 0)
-    return 0;
-  else if (cur_sel == 1)
-    return 1;
-  else if (cur_sel == 2)
-    return 7;
-  else if (cur_sel == 3)
-    return 8;
-  else if (cur_sel == 4)
-    return 9;
-  else if (cur_sel == 5)
-    return 60;
-
-  return 8;
+  switch (cur_sel)
+  {
+    case 0:
+      return 0;
+    case 1:
+      return 1;
+    case 2:
+      return 7;
+    default:
+    case 3:
+      return 8;
+    case 4:
+      return 9;
+    case 5:
+      return 60;
+  }
 }
 
 void
 BMT_SetStreamingPoolSize (void)
-{
+{ 
   wchar_t wszPoolSize [32];
 
   // Convert from Bytes to MiB (Reserving 100%)
@@ -943,8 +967,6 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       hWndApp = hDlg;
 
 
-
-      extern void BMT_NVAPI_Init (void);
       BMT_NVAPI_Init ();
 
       if (!BMT_LoadXML ()) {
@@ -955,142 +977,312 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       settings.load (install_path);
       engine.load   (install_path);
 
-      refresh_rate.register_to_xml (BMT_XML_FindNode (bmak_gamesettings, L"RESOLUTION"), L"RefreshRate");
-      refresh_rate.register_to_ini (engine.get_file (), L"Engine.Client", L"MinDesiredFrameRate");
-      refresh_rate.bind_to_control (new BMT_EditBox (GetDlgItem (hDlg, IDC_REFRESH_RATE)));
-      refresh_rate.load ();
+      refresh_rate =
+        static_cast <bmt::ParameterInt *> (
+          bmt::g_ParameterFactory.create_parameter <int> (L"Refresh Rate")
+        );
 
-      res_x.register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"ResolutionX"), L"Value");
-      res_x.register_to_ini (settings.get_file (), L"SystemSettings", L"ResX");
-      res_x.bind_to_control (new BMT_EditBox (GetDlgItem (hDlg, IDC_RES_X)));
-      res_x.load ();
+      refresh_rate->register_to_xml (BMT_XML_FindNode (bmak_gamesettings, L"RESOLUTION"), L"RefreshRate");
+      refresh_rate->register_to_ini (engine.get_file (), L"Engine.Client", L"MinDesiredFrameRate");
+      refresh_rate->bind_to_control (new bmt::UI::EditBox (GetDlgItem (hDlg, IDC_REFRESH_RATE)));
+      refresh_rate->load ();
 
-      res_y.register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"ResolutionY"), L"Value");
-      res_y.register_to_ini (settings.get_file (), L"SystemSettings", L"ResY");
-      res_y.bind_to_control (new BMT_EditBox (GetDlgItem (hDlg, IDC_RES_Y)));
-      res_y.load ();
+      res_x =
+        static_cast <bmt::ParameterInt *> (
+          bmt::g_ParameterFactory.create_parameter <int> (L"X Resolution")
+        );
 
-      max_fps.register_to_ini (settings.get_file (), L"SystemSettings", L"MaxFPS");
-      max_fps.bind_to_control (new BMT_EditBox (GetDlgItem (hDlg, IDC_MAXFPS)));
-      max_fps.load ();
+      res_x->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"ResolutionX"), L"Value");
+      res_x->register_to_ini (settings.get_file (), L"SystemSettings", L"ResX");
+      res_x->bind_to_control (new bmt::UI::EditBox (GetDlgItem (hDlg, IDC_RES_X)));
+      res_x->load ();
 
-      use_vsync.register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Vsync"), L"Value");
-      use_vsync.register_to_ini (settings.get_file (), L"SystemSettings", L"UseVsync");
-      use_vsync.bind_to_control (new BMT_CheckBox (GetDlgItem (hDlg, IDC_VSYNC)));
-      use_vsync.load ();
+      res_y =
+        static_cast <bmt::ParameterInt *> (
+          bmt::g_ParameterFactory.create_parameter <int> (L"Y Resolution")
+        );
 
-      smooth_framerate.register_to_ini (engine.get_file (), L"Engine.Engine", L"bSmoothFrameRate");
-      smooth_framerate.bind_to_control (new BMT_CheckBox (GetDlgItem (hDlg, IDC_FRAMERATE_SMOOTHING)));
-      smooth_framerate.load ();
-
-      smoothed_min.register_to_ini (engine.get_file (), L"Engine.Engine", L"MinSmoothedFrameRate");
-      smoothed_min.bind_to_control (new BMT_EditBox (GetDlgItem (hDlg, IDC_MIN_SMOOTHED)));
-      smoothed_min.load ();
-
-      smoothed_max.register_to_ini (engine.get_file (), L"Engine.Engine", L"MaxSmoothedFrameRate");
-      smoothed_max.bind_to_control (new BMT_EditBox (GetDlgItem (hDlg, IDC_MAX_SMOOTHED)));
-      smoothed_max.load ();
+      res_y->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"ResolutionY"), L"Value");
+      res_y->register_to_ini (settings.get_file (), L"SystemSettings", L"ResY");
+      res_y->bind_to_control (new bmt::UI::EditBox (GetDlgItem (hDlg, IDC_RES_Y)));
+      res_y->load ();
 
 
-      blur_samples.register_to_ini (settings.get_file (), L"SystemSettings", L"MaxFilterBlurSampleCount");
-      blur_samples.load ();
+      max_fps =
+        static_cast <bmt::ParameterInt *> (
+          bmt::g_ParameterFactory.create_parameter <int> (L"Maximum Framerate")
+        );
+
+      max_fps->register_to_ini (settings.get_file (), L"SystemSettings", L"MaxFPS");
+      max_fps->bind_to_control (new bmt::UI::EditBox (GetDlgItem (hDlg, IDC_MAXFPS)));
+      max_fps->load ();
 
 
-      anisotropy.register_to_ini (settings.get_file (), L"SystemSettings", L"MaxAnisotropy");
-      anisotropy.load ();
+      use_vsync =
+        static_cast <bmt::ParameterBool *> (
+          bmt::g_ParameterFactory.create_parameter <bool> (L"Use VSYNC")
+        );
 
-      texture_res.register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Texture_Resolution"), L"Value");
-      texture_res.register_to_ini (settings.get_file (), L"SystemSettings", L"TextureResolution");
-      texture_res.load ();
+      use_vsync->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Vsync"), L"Value");
+      use_vsync->register_to_ini (settings.get_file (), L"SystemSettings", L"UseVsync");
+      use_vsync->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_VSYNC)));
+      use_vsync->load ();
 
+
+      smooth_framerate =
+        static_cast <bmt::ParameterBool *> (
+          bmt::g_ParameterFactory.create_parameter <bool> (L"Framerate Smoothing")
+        );
+
+      smooth_framerate->register_to_ini (engine.get_file (), L"Engine.Engine", L"bSmoothFrameRate");
+      smooth_framerate->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_FRAMERATE_SMOOTHING)));
+      smooth_framerate->load ();
+
+      smoothed_min =
+        static_cast <bmt::ParameterInt *> (
+          bmt::g_ParameterFactory.create_parameter <int> (L"Minimum Smoothed Range")
+        );
+
+      smoothed_min->register_to_ini (engine.get_file (), L"Engine.Engine", L"MinSmoothedFrameRate");
+      smoothed_min->bind_to_control (new bmt::UI::EditBox (GetDlgItem (hDlg, IDC_MIN_SMOOTHED)));
+      smoothed_min->load ();
+
+      smoothed_max =
+        static_cast <bmt::ParameterInt *> (
+          bmt::g_ParameterFactory.create_parameter <int> (L"Maximum Smoothed Range")
+        );
+
+      smoothed_max->register_to_ini (engine.get_file (), L"Engine.Engine", L"MaxSmoothedFrameRate");
+      smoothed_max->bind_to_control (new bmt::UI::EditBox (GetDlgItem (hDlg, IDC_MAX_SMOOTHED)));
+      smoothed_max->load ();
+
+
+      blur_samples =
+        static_cast <bmt::ParameterInt *> (
+          bmt::g_ParameterFactory.create_parameter <int> (L"Number of Blur Filter Samples")
+        );
+
+      blur_samples->register_to_ini (settings.get_file (), L"SystemSettings", L"MaxFilterBlurSampleCount");
+      blur_samples->load ();
+
+
+      // In some APIs this is a float, but let's just keep things simple (int).
+      anisotropy =
+        static_cast <bmt::ParameterInt *> (
+          bmt::g_ParameterFactory.create_parameter <int> (L"Maximum Anisotropic Filter")
+        );
+
+      anisotropy->register_to_ini (settings.get_file (), L"SystemSettings", L"MaxAnisotropy");
+      anisotropy->load ();
+
+      texture_res =
+        static_cast <bmt::ParameterInt *> (
+          bmt::g_ParameterFactory.create_parameter <int> (L"Texture Resolution Level")
+        );
+
+      texture_res->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Texture_Resolution"), L"Value");
+      texture_res->register_to_ini (settings.get_file (), L"SystemSettings", L"TextureResolution");
+      texture_res->load ();
+
+
+      hardware_physx =
+        static_cast <bmt::ParameterBool *> (
+          bmt::g_ParameterFactory.create_parameter <bool> (L"Disable Hardware PhysX")
+      );
 
       Button_SetText (GetDlgItem (hDlg, IDC_HARDWARE_PHYSX), L"Disable Hardware PhysX");
-      hardware_physx.register_to_ini (engine.get_file (), L"Engine.Engine", L"bDisablePhysXHardwareSupport");
-      hardware_physx.bind_to_control (new BMT_CheckBox (GetDlgItem (hDlg, IDC_HARDWARE_PHYSX)));
-      hardware_physx.load ();
-
-      physx_level.register_to_ini (engine.get_file (), L"Engine.Engine", L"PhysXLevel");
-      physx_level.load ();
-
-      physx_heap_size.register_to_ini  (engine.get_file (), L"Engine.Engine", L"PhysXGpuHeapSize");
-      physx_heap_size.load ();
-
-      physx_mesh_cache.register_to_ini (engine.get_file (), L"Engine.Engine", L"PhysXMeshCacheSize");
-      physx_mesh_cache.load ();
-
-      enable_dx10.register_to_ini (settings.get_file (), L"SystemSettings", L"AllowD3D10");
-      enable_dx10.bind_to_control (new BMT_CheckBox (GetDlgItem (hDlg, IDC_DX10)));
-      enable_dx10.load ();
-
-      enable_dx11.register_to_ini (settings.get_file (), L"SystemSettings", L"AllowD3D11");
-      enable_dx11.bind_to_control (new BMT_CheckBox (GetDlgItem (hDlg, IDC_DX11)));
-      enable_dx11.load ();
-
-      enable_crossfire.register_to_ini (settings.get_file (), L"SystemSettings", L"bEnableCrossfire");
-      enable_crossfire.bind_to_control (new BMT_CheckBox (GetDlgItem (hDlg, IDC_CROSSFIRE)));
-      enable_crossfire.load ();
+      hardware_physx->register_to_ini (engine.get_file (), L"Engine.Engine", L"bDisablePhysXHardwareSupport");
+      hardware_physx->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_HARDWARE_PHYSX)));
+      hardware_physx->load ();
 
 
-      level_of_detail.register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Level_Of_Detail"), L"Value");
-      level_of_detail.register_to_ini (settings.get_file (), L"SystemSettings", L"LevelOfDetail");
-      level_of_detail.load ();
+      physx_level =
+        static_cast <bmt::ParameterInt *> (
+          bmt::g_ParameterFactory.create_parameter <int> (L"PhysX Level")
+        );
+
+      physx_level->register_to_ini (engine.get_file (), L"Engine.Engine", L"PhysXLevel");
+      physx_level->load ();
+
+      physx_heap_size =
+        static_cast <bmt::ParameterInt64 *> (
+          bmt::g_ParameterFactory.create_parameter <int64_t> (L"PhysX Heap Size (GPU)")
+        );
+
+      physx_heap_size->register_to_ini  (engine.get_file (), L"Engine.Engine", L"PhysXGpuHeapSize");
+      physx_heap_size->load ();
+
+      physx_mesh_cache =
+        static_cast <bmt::ParameterInt64 *> (
+          bmt::g_ParameterFactory.create_parameter <int64_t> (L"PhysX Mesh Cache (GPU)")
+        );
+
+      physx_mesh_cache->register_to_ini (engine.get_file (), L"Engine.Engine", L"PhysXMeshCacheSize");
+      physx_mesh_cache->load ();
+
+
+      enable_dx10 =
+        static_cast <bmt::ParameterBool *> (
+          bmt::g_ParameterFactory.create_parameter <bool> (L"Enable DX10 Features")
+        );
+
+      enable_dx10->register_to_ini (settings.get_file (), L"SystemSettings", L"AllowD3D10");
+      enable_dx10->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_DX10)));
+      enable_dx10->load ();
+
+      enable_dx11 =
+        static_cast <bmt::ParameterBool *> (
+          bmt::g_ParameterFactory.create_parameter <bool> (L"Enable DX11 Features")
+        );
+
+      enable_dx11->register_to_ini (settings.get_file (), L"SystemSettings", L"AllowD3D11");
+      enable_dx11->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_DX11)));
+      enable_dx11->load ();
+
+      enable_crossfire =
+        static_cast <bmt::ParameterBool *> (
+          bmt::g_ParameterFactory.create_parameter <bool> (L"Enable CrossFire")
+        );
+
+      enable_crossfire->register_to_ini (settings.get_file (), L"SystemSettings", L"bEnableCrossfire");
+      enable_crossfire->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_CROSSFIRE)));
+      enable_crossfire->load ();
+
+
+      level_of_detail =
+        static_cast <bmt::ParameterInt *> (
+          bmt::g_ParameterFactory.create_parameter <int> (L"Level of Detail")
+        );
+
+      level_of_detail->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Level_Of_Detail"), L"Value");
+      level_of_detail->register_to_ini (settings.get_file (), L"SystemSettings", L"LevelOfDetail");
+      level_of_detail->load ();
 
       //level_of_detail2.register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Level_Of_Detail"), L"Value");
       //level_of_detail2.register_to_ini (settings.get_file (), L"SystemSettings", L"DetailMode");
       //level_of_detail2.load ();
 
-      shadow_quality.register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Shadow_Quality"), L"Value");
-      shadow_quality.register_to_ini (settings.get_file (), L"SystemSettings", L"ShadowQuality");
-      shadow_quality.load ();
+      shadow_quality =
+        static_cast <bmt::ParameterInt *> (
+          bmt::g_ParameterFactory.create_parameter <int> (L"Shadow Quality")
+        );
 
-      antialiasing.register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Anti-Aliasing"), L"Value");
-      antialiasing.register_to_ini (settings.get_file (), L"SystemSettings", L"Antialiasing");
-      antialiasing.bind_to_control (new BMT_CheckBox (GetDlgItem (hDlg, IDC_ANTIALIASING)));
-      antialiasing.load ();
+      shadow_quality->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Shadow_Quality"), L"Value");
+      shadow_quality->register_to_ini (settings.get_file (), L"SystemSettings", L"ShadowQuality");
+      shadow_quality->load ();
 
+      antialiasing =
+        static_cast <bmt::ParameterInt *> (
+          bmt::g_ParameterFactory.create_parameter <int> (L"Antialiasing")
+        );
 
-      interactive_debris.register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Interactive_Paper_Debris"), L"Value");
-      interactive_debris.register_to_ini (settings.get_file (), L"SystemSettings", L"bEnableInteractivePaperDebris");
-      interactive_debris.bind_to_control (new BMT_CheckBox (GetDlgItem (hDlg, IDC_INTERACTIVE_DEBRIS)));
-      interactive_debris.load ();
-
-      interactive_smoke.register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Interactive_Smoke"), L"Value");
-      interactive_smoke.register_to_ini (settings.get_file (), L"SystemSettings", L"bEnableInteractiveSmoke");
-      interactive_smoke.bind_to_control (new BMT_CheckBox (GetDlgItem (hDlg, IDC_INTERACTIVE_SMOKE)));
-      interactive_smoke.load ();
-
-      enhanced_rain.register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Rain_FX"), L"Value");
-      enhanced_rain.register_to_ini (settings.get_file (), L"SystemSettings", L"bEnableRainFX");
-      enhanced_rain.bind_to_control (new BMT_CheckBox (GetDlgItem (hDlg, IDC_ENHANCED_RAIN)));
-      enhanced_rain.load ();
-
-      enhanced_lightshafts.register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Volumetric_Lighting"), L"Value");
-      enhanced_lightshafts.register_to_ini (settings.get_file (), L"SystemSettings", L"bEnableVolumetricLighting");
-      enhanced_lightshafts.bind_to_control (new BMT_CheckBox (GetDlgItem (hDlg, IDC_ENHANCED_LIGHT_SHAFTS)));
-      enhanced_lightshafts.load ();
+      antialiasing->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Anti-Aliasing"), L"Value");
+      antialiasing->register_to_ini (settings.get_file (), L"SystemSettings", L"Antialiasing");
+      antialiasing->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_ANTIALIASING)));
+      antialiasing->load ();
 
 
-      mip_fadein0.register_to_ini (engine.get_file (), L"Engine.Engine", L"MipFadeInSpeed0");
-      mip_fadein0.load ();
-      mip_fadein1.register_to_ini (engine.get_file (), L"Engine.Engine", L"MipFadeInSpeed1");
-      mip_fadein1.load ();
+      interactive_debris =
+        static_cast <bmt::ParameterBool *> (
+          bmt::g_ParameterFactory.create_parameter <bool> (L"Interactive Paper Debris")
+        );
 
-      mip_fadeout0.register_to_ini (engine.get_file (), L"Engine.Engine", L"MipFadeOutSpeed0");
-      mip_fadeout0.load ();
-      mip_fadeout1.register_to_ini (engine.get_file (), L"Engine.Engine", L"MipFadeOutSpeed1");
-      mip_fadeout1.load ();
+      interactive_debris->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Interactive_Paper_Debris"), L"Value");
+      interactive_debris->register_to_ini (settings.get_file (), L"SystemSettings", L"bEnableInteractivePaperDebris");
+      interactive_debris->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_INTERACTIVE_DEBRIS)));
+      interactive_debris->load ();
 
-      shadow_scale.register_to_ini (settings.get_file (), L"SystemSettings", L"ShadowTexelsPerPixel");
-      shadow_scale.load ();
+      interactive_smoke =
+        static_cast <bmt::ParameterBool *> (
+          bmt::g_ParameterFactory.create_parameter <bool> (L"Interactive Smoke")
+        );
 
-      framerate_limiting.register_to_ini (engine.get_file (), L"Engine.Engine", L"FrameRateLimitingSetting");
-      framerate_limiting.load ();
+      interactive_smoke->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Interactive_Smoke"), L"Value");
+      interactive_smoke->register_to_ini (settings.get_file (), L"SystemSettings", L"bEnableInteractiveSmoke");
+      interactive_smoke->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_INTERACTIVE_SMOKE)));
+      interactive_smoke->load ();
 
-      max_delta_time.register_to_ini (engine.get_file (), L"Engine.GameEngine", L"MaxDeltaTime");
-      max_delta_time.load ();
+      enhanced_rain =
+        static_cast <bmt::ParameterBool *> (
+          bmt::g_ParameterFactory.create_parameter <bool> (L"Interactive Smoke")
+        );
 
-      visibility_frames.register_to_ini (engine.get_file (), L"Engine.Engine", L"PrimitiveProbablyVisibleTime");
-      visibility_frames.load ();
+      enhanced_rain->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Rain_FX"), L"Value");
+      enhanced_rain->register_to_ini (settings.get_file (), L"SystemSettings", L"bEnableRainFX");
+      enhanced_rain->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_ENHANCED_RAIN)));
+      enhanced_rain->load ();
+
+      enhanced_lightshafts = 
+        static_cast <bmt::ParameterBool *> (
+          bmt::g_ParameterFactory.create_parameter <bool> (L"Volumetric Lighting (Enhanced Lightshafts)")
+        );
+
+      enhanced_lightshafts->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Volumetric_Lighting"), L"Value");
+      enhanced_lightshafts->register_to_ini (settings.get_file (), L"SystemSettings", L"bEnableVolumetricLighting");
+      enhanced_lightshafts->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_ENHANCED_LIGHT_SHAFTS)));
+      enhanced_lightshafts->load ();
+
+
+      mip_fadein0 =
+        static_cast <bmt::ParameterFloat *> (
+          bmt::g_ParameterFactory.create_parameter <float> (L"Mipmap LOD0 FadeIn Rate")
+        );
+      mip_fadein1 =
+        static_cast <bmt::ParameterFloat *> (
+          bmt::g_ParameterFactory.create_parameter <float> (L"Mipmap LOD1 FadeIn Rate")
+        );
+      mip_fadein0->register_to_ini (engine.get_file (), L"Engine.Engine", L"MipFadeInSpeed0");
+      mip_fadein0->load ();
+      mip_fadein1->register_to_ini (engine.get_file (), L"Engine.Engine", L"MipFadeInSpeed1");
+      mip_fadein1->load ();
+
+      mip_fadeout0 =
+        static_cast <bmt::ParameterFloat *> (
+          bmt::g_ParameterFactory.create_parameter <float> (L"Mipmap LOD0 FadeOut Rate")
+        );
+      mip_fadeout1 =
+        static_cast <bmt::ParameterFloat *> (
+          bmt::g_ParameterFactory.create_parameter <float> (L"Mipmap LOD1 FadeOut Rate")
+        );
+      mip_fadeout0->register_to_ini (engine.get_file (), L"Engine.Engine", L"MipFadeOutSpeed0");
+      mip_fadeout0->load ();
+      mip_fadeout1->register_to_ini (engine.get_file (), L"Engine.Engine", L"MipFadeOutSpeed1");
+      mip_fadeout1->load ();
+
+
+      shadow_scale =
+        static_cast <bmt::ParameterFloat *> (
+          bmt::g_ParameterFactory.create_parameter <float> (L"Shadow Scale (Shadow Texels Per-Pixel)")
+        );
+
+      shadow_scale->register_to_ini (settings.get_file (), L"SystemSettings", L"ShadowTexelsPerPixel");
+      shadow_scale->load ();
+
+
+      framerate_limiting =
+        static_cast <bmt::ParameterInt *> (
+          bmt::g_ParameterFactory.create_parameter <int> (L"Frame Rate Limiting Setting (not what it sounds like)")
+        );
+
+      framerate_limiting->register_to_ini (engine.get_file (), L"Engine.Engine", L"FrameRateLimitingSetting");
+      framerate_limiting->load ();
+
+      max_delta_time =
+        static_cast <bmt::ParameterFloat *> (
+          bmt::g_ParameterFactory.create_parameter <float> (L"Maximum Delta Time")
+          );
+
+      max_delta_time->register_to_ini (engine.get_file (), L"Engine.GameEngine", L"MaxDeltaTime");
+      max_delta_time->load ();
+
+
+      visibility_frames =
+        static_cast <bmt::ParameterInt *> (
+          bmt::g_ParameterFactory.create_parameter <int> (L"Primitive Probably Visible Time")
+        );
+
+      visibility_frames->register_to_ini (engine.get_file (), L"Engine.Engine", L"PrimitiveProbablyVisibleTime");
+      visibility_frames->load ();
 
 
       setup_physx_properties (hDlg);
@@ -1150,13 +1342,15 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     {
       if (LOWORD (wParam) == IDC_MATCH_DESKTOP) {
         DEVMODE dmNow;
+
         memset (&dmNow, 0, sizeof (DEVMODE));
-        dmNow.dmSize = sizeof (DEVMODE);
+            dmNow.dmSize = sizeof (DEVMODE);
+
         EnumDisplaySettings (NULL, ENUM_CURRENT_SETTINGS, &dmNow);
 
-        res_x.set_value (dmNow.dmPelsWidth);
-        res_y.set_value (dmNow.dmPelsHeight);
-        refresh_rate.set_value (dmNow.dmDisplayFrequency);
+        res_x->set_value        (dmNow.dmPelsWidth);
+        res_y->set_value        (dmNow.dmPelsHeight);
+        refresh_rate->set_value (dmNow.dmDisplayFrequency);
       }
 
       if (LOWORD (wParam) == IDC_NV_DRIVER_TWEAKS) {
@@ -1195,7 +1389,7 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       }
 
       if (LOWORD (wParam) == IDC_HARDWARE_PHYSX) {
-        hardware_physx.set_value (Button_GetCheck (GetDlgItem (hDlg, IDC_HARDWARE_PHYSX)) == TRUE);
+        hardware_physx->set_value (Button_GetCheck (GetDlgItem (hDlg, IDC_HARDWARE_PHYSX)) == TRUE);
 
         setup_physx_properties (hDlg);
       }
@@ -1207,26 +1401,28 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
       if (LOWORD (wParam) == IDC_LOW_PHYSX)
       {
-        physx_level.set_value (7);
+        physx_level->set_value (7);
       }
 
       if (LOWORD (wParam) == IDC_HIGH_PHYSX)
       {
-        physx_level.set_value (31);
+        physx_level->set_value (31);
       }
 
       if (LOWORD (wParam) == IDC_ULTRA_PHYSX)
       {
-        physx_level.set_value (255);
+        physx_level->set_value (255);
       }
 
       if (LOWORD (wParam) == IDC_PHYSX_MEMTUNE)
       {
         size_t heap;
         size_t cache;
+
         tune_physx_memory (hDlg, heap, cache);
-        physx_heap_size.set_value (heap);
-        physx_mesh_cache.set_value (cache);
+
+        physx_heap_size->set_value  (heap);
+        physx_mesh_cache->set_value (cache);
       }
 
       if (LOWORD (wParam) == IDCANCEL)
@@ -1236,67 +1432,67 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       }
 
       else if (LOWORD (wParam) == IDOK) {
-        res_x.store        ();
-        res_y.store        ();
-        refresh_rate.store ();
-        max_fps.store      ();
+        res_x->store        ();
+        res_y->store        ();
+        refresh_rate->store ();
+        max_fps->store      ();
 
-        use_vsync.store    ();
+        use_vsync->store    ();
 
-        smooth_framerate.store ();
-        smoothed_min.store     ();
-        smoothed_max.store     ();
+        smooth_framerate->store ();
+        smoothed_min->store     ();
+        smoothed_max->store     ();
 
-        hardware_physx.store ();
-        physx_level.store    ();
-        physx_heap_size.store ();
-        physx_mesh_cache.store ();
+        hardware_physx->store   ();
+        physx_level->store      ();
+        physx_heap_size->store  ();
+        physx_mesh_cache->store ();
 
-        blur_samples.set_value (get_blur_samples (hDlg));
-        blur_samples.store ();
+        blur_samples->set_value (get_blur_samples (hDlg));
+        blur_samples->store     ();
 
-        anisotropy.set_value (get_tex_filter (hDlg));
-        anisotropy.store ();
+        anisotropy->set_value (get_tex_filter (hDlg));
+        anisotropy->store     ();
 
         ////
 
-        enable_dx10.store ();
-        enable_dx11.store ();
-        enable_crossfire.store ();
+        enable_dx10->store      ();
+        enable_dx11->store      ();
+        enable_crossfire->store ();
 
-        level_of_detail.set_value  (get_level_of_detail (hDlg));
+        level_of_detail->set_value  (get_level_of_detail (hDlg));
         //level_of_detail2.set_value (get_level_of_detail (hDlg));
 
-        level_of_detail.store  ();
+        level_of_detail->store  ();
         //level_of_detail2.store ();
 
-        shadow_quality.set_value (get_shadow_quality (hDlg));
-        shadow_quality.store ();
+        shadow_quality->set_value (get_shadow_quality (hDlg));
+        shadow_quality->store     ();
 
-        antialiasing.store ();
+        antialiasing->store ();
 
-        interactive_debris.store ();
-        interactive_smoke.store ();
-        enhanced_rain.store ();
-        enhanced_lightshafts.store ();
+        interactive_debris->store   ();
+        interactive_smoke->store    ();
+        enhanced_rain->store        ();
+        enhanced_lightshafts->store ();
 
         store_fadein (hDlg);
         store_fadeout (hDlg);
 
-        texture_res.set_value (get_tex_res (hDlg));
-        texture_res.store ();
+        texture_res->set_value (get_tex_res (hDlg));
+        texture_res->store     ();
 
-        shadow_scale.set_value (get_shadow_scale (hDlg));
-        shadow_scale.store ();
+        shadow_scale->set_value (get_shadow_scale (hDlg));
+        shadow_scale->store     ();
 
-        framerate_limiting.set_value (get_framerate_limiting (hDlg));
-        framerate_limiting.store ();
+        framerate_limiting->set_value (get_framerate_limiting (hDlg));
+        framerate_limiting->store     ();
 
-        max_delta_time.set_value (get_max_delta_time (hDlg));
-        max_delta_time.store ();
+        max_delta_time->set_value (get_max_delta_time (hDlg));
+        max_delta_time->store     ();
 
-        visibility_frames.set_value (get_visibility_frames (hDlg));
-        visibility_frames.store ();
+        visibility_frames->set_value (get_visibility_frames (hDlg));
+        visibility_frames->store     ();
 
         //
         // @TODO: UI Control Wrapper for Radio Buttons

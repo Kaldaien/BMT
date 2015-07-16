@@ -4,7 +4,7 @@
 #include "parameter.h"
 
 std::wstring
-BMT_Parameter_Int::get_value_str (void)
+bmt::ParameterInt::get_value_str (void)
 {
   wchar_t str [32];
   _itow (value, str, 10);
@@ -13,13 +13,13 @@ BMT_Parameter_Int::get_value_str (void)
 }
 
 int
-BMT_Parameter_Int::get_value (void)
+bmt::ParameterInt::get_value (void)
 {
   return value;
 }
 
 void
-BMT_Parameter_Int::set_value (int val)
+bmt::ParameterInt::set_value (int val)
 {
   value = val;
 
@@ -29,7 +29,7 @@ BMT_Parameter_Int::set_value (int val)
 
 
 void
-BMT_Parameter_Int::set_value_str (std::wstring str)
+bmt::ParameterInt::set_value_str (std::wstring str)
 {
   value = _wtoi (str.c_str ());
 
@@ -40,7 +40,7 @@ BMT_Parameter_Int::set_value_str (std::wstring str)
 
 
 std::wstring
-BMT_Parameter_Int64::get_value_str (void)
+bmt::ParameterInt64::get_value_str (void)
 {
   wchar_t str [32];
   _i64tow (value, str, 10);
@@ -49,13 +49,13 @@ BMT_Parameter_Int64::get_value_str (void)
 }
 
 int64_t
-BMT_Parameter_Int64::get_value (void)
+bmt::ParameterInt64::get_value (void)
 {
   return value;
 }
 
 void
-BMT_Parameter_Int64::set_value (int64_t val)
+bmt::ParameterInt64::set_value (int64_t val)
 {
   value = val;
 
@@ -65,7 +65,7 @@ BMT_Parameter_Int64::set_value (int64_t val)
 
 
 void
-BMT_Parameter_Int64::set_value_str (std::wstring str)
+bmt::ParameterInt64::set_value_str (std::wstring str)
 {
   value = _wtol (str.c_str ());
 
@@ -76,7 +76,7 @@ BMT_Parameter_Int64::set_value_str (std::wstring str)
 
 
 std::wstring
-BMT_Parameter_Bool::get_value_str (void)
+bmt::ParameterBool::get_value_str (void)
 {
   if (value == true)
     return L"true";
@@ -85,13 +85,13 @@ BMT_Parameter_Bool::get_value_str (void)
 }
 
 bool
-BMT_Parameter_Bool::get_value (void)
+bmt::ParameterBool::get_value (void)
 {
   return value;
 }
 
 void
-BMT_Parameter_Bool::set_value (bool val)
+bmt::ParameterBool::set_value (bool val)
 {
   value = val;
 
@@ -101,7 +101,7 @@ BMT_Parameter_Bool::set_value (bool val)
 
 
 void
-BMT_Parameter_Bool::set_value_str (std::wstring str)
+bmt::ParameterBool::set_value_str (std::wstring str)
 {
   if (str.length () == 1 &&
       str [0] == L'1')
@@ -124,7 +124,7 @@ BMT_Parameter_Bool::set_value_str (std::wstring str)
 
 
 std::wstring
-BMT_Parameter_Float::get_value_str (void)
+bmt::ParameterFloat::get_value_str (void)
 {
   wchar_t val_str [16];
   swprintf (val_str, L"%f", value);
@@ -133,13 +133,13 @@ BMT_Parameter_Float::get_value_str (void)
 }
 
 float
-BMT_Parameter_Float::get_value (void)
+bmt::ParameterFloat::get_value (void)
 {
   return value;
 }
 
 void
-BMT_Parameter_Float::set_value (float val)
+bmt::ParameterFloat::set_value (float val)
 {
   value = val;
 
@@ -149,7 +149,7 @@ BMT_Parameter_Float::set_value (float val)
 
 
 void
-BMT_Parameter_Float::set_value_str (std::wstring str)
+bmt::ParameterFloat::set_value_str (std::wstring str)
 {
   value = (float)wcstod (str.c_str (), NULL);
 
@@ -162,7 +162,7 @@ BMT_Parameter_Float::set_value_str (std::wstring str)
 #include <windowsx.h>
 
 std::wstring
-BMT_EditBox::get_value_str (void)
+bmt::UI::EditBox::get_value_str (void)
 {
   wchar_t val_str [32];
   Edit_GetText (handle, val_str, 32);
@@ -170,13 +170,13 @@ BMT_EditBox::get_value_str (void)
 }
 
 void
-BMT_EditBox::set_value_str (std::wstring str)
+bmt::UI::EditBox::set_value_str (std::wstring str)
 {
   Edit_SetText (handle, str.c_str ());
 }
 
 std::wstring
-BMT_CheckBox::get_value_str (void)
+bmt::UI::CheckBox::get_value_str (void)
 {
   if (Button_GetCheck (handle)) {
     if (numeric)
@@ -193,7 +193,7 @@ BMT_CheckBox::get_value_str (void)
 }
 
 void
-BMT_CheckBox::set_value_str (std::wstring str)
+bmt::UI::CheckBox::set_value_str (std::wstring str)
 {
   if (str.length () == 1 &&
       str [0] == L'1') {
@@ -218,4 +218,46 @@ BMT_CheckBox::set_value_str (std::wstring str)
     Button_SetCheck (handle, false);
     numeric = false;
   }
+}
+
+
+
+template <>
+bmt::iParameter*
+bmt::ParameterFactory::create_parameter <int> (const wchar_t* name)
+{
+  iParameter* param = new ParameterInt ();
+  params.push_back (param);
+
+  return param;
+}
+
+template <>
+bmt::iParameter*
+bmt::ParameterFactory::create_parameter <int64_t> (const wchar_t* name)
+{
+  iParameter* param = new ParameterInt64 ();
+  params.push_back (param);
+
+  return param;
+}
+
+template <>
+bmt::iParameter*
+bmt::ParameterFactory::create_parameter <bool> (const wchar_t* name)
+{
+  iParameter* param = new ParameterBool ();
+  params.push_back (param);
+
+  return param;
+}
+
+template <>
+bmt::iParameter*
+bmt::ParameterFactory::create_parameter <float> (const wchar_t* name)
+{
+  iParameter* param = new ParameterFloat ();
+  params.push_back (param);
+
+  return param;
 }
