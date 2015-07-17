@@ -6,23 +6,29 @@
 
 using namespace rapidxml;
 
-xml_node<wchar_t>*
-BMT_XML_FindNode (xml_node<wchar_t>* parent_node, std::wstring name);
+namespace bmt {
+namespace XML {
 
-xml_attribute<wchar_t>*
-BMT_XML_FindAttrib (xml_node<wchar_t>* parent_node, std::wstring name);
+  xml_node<wchar_t>*
+    FindNode (xml_node<wchar_t>* parent_node, std::wstring name);
 
-xml_node<wchar_t>*
-BMT_XML_FindOption (xml_node<wchar_t>* parent_node, std::wstring name);
+  xml_attribute<wchar_t>*
+    FindAttrib (xml_node<wchar_t>* parent_node, std::wstring name);
 
-extern std::wstring install_path;
-extern xml_document<wchar_t> bmak_xml;
+  xml_node<wchar_t>*
+    FindOption (xml_node<wchar_t>* parent_node, std::wstring name);
 
-extern xml_node<wchar_t>* bmak_root;
-extern xml_node<wchar_t>* bmak_application;
-extern xml_node<wchar_t>* bmak_gamesettings;
+  extern std::wstring install_path;
+  extern xml_document<wchar_t> bmak_xml;
 
-void BMT_SaveXML (void);
-bool BMT_LoadXML (void);
+  extern xml_node<wchar_t>* bmak_root;
+  extern xml_node<wchar_t>* bmak_application;
+  extern xml_node<wchar_t>* bmak_gamesettings;
+
+  void SaveXML (void);
+  bool LoadXML (void);
+
+}
+}
 
 #endif /* __BMT__XML_H__ */

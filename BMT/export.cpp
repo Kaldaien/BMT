@@ -5,6 +5,8 @@
 
 #include "bmt.h"
 
+using namespace bmt;
+
 INT_PTR
 CALLBACK
 ImportExport (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
@@ -24,7 +26,7 @@ ImportExport (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       L"TextureStreaming" };
     int num_def_secs = sizeof (default_sections) / sizeof (wchar_t *);
 
-    BMT_INI_File* bm_engine_ini = engine.get_file ();
+    INI::File* bm_engine_ini = engine.get_file ();
 
     int idx = 0;
 
@@ -43,7 +45,7 @@ ImportExport (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
     HTREEITEM hEngine = TreeView_InsertItem (hWndDataSelect, &ins);
 
-    for (std::map <std::wstring, BMT_INI_File::Section>::const_iterator it = bm_engine_ini->get_sections ().begin ();
+    for (std::map <std::wstring, INI::File::Section>::const_iterator it = bm_engine_ini->get_sections ().begin ();
     it != bm_engine_ini->get_sections ().end ();
       ++it) {
 
@@ -73,9 +75,9 @@ ImportExport (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
     HTREEITEM hSystem = TreeView_InsertItem (hWndDataSelect, &ins);
 
-    BMT_INI_File* bm_system_ini = settings.get_file ();
+    INI::File* bm_system_ini = settings.get_file ();
 
-    for (std::map <std::wstring, BMT_INI_File::Section>::const_iterator it = bm_system_ini->get_sections ().begin ();
+    for (std::map <std::wstring, INI::File::Section>::const_iterator it = bm_system_ini->get_sections ().begin ();
     it != bm_system_ini->get_sections ().end ();
       ++it) {
 

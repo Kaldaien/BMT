@@ -10,14 +10,17 @@
 #include "xml.h"
 #include "parameter.h"
 #include "utility.h"
+#include "nvapi.h"
+#include "dxgi.h"
 
 #include <cstdio>
 
 #include <windowsx.h>
-#include <dxgi.h>
 #include <CommCtrl.h> // Button_GetIdealSize
 
 #pragma comment(lib, "Comctl32.lib")
+
+using namespace bmt;
 
 INT_PTR CALLBACK  Config (HWND, UINT, WPARAM, LPARAM);
 
@@ -117,7 +120,7 @@ struct streaming_profiles {
   { L"[TextureStreaming]\n"
     L"AllowStreamingLightmaps=True\n"
     L"BoostPlayerTextures=4.0\n"
-    L"DropMipLevelsLimit=14\n"
+    L"DropMipLevelsLimit=13\n"
     L"FudgeFactorDecreaseRateOfChange=-0.4\n"
     L"FudgeFactorIncreaseRateOfChange=0.5\n"
     L"HysteresisLimit=19\n"
@@ -126,18 +129,18 @@ struct streaming_profiles {
     L"MaxDefragDownShift=128\n"
     L"MaxDefragRelocations=256\n"
     L"MaxLightmapRadius=12500.0\n"
-    L"MaxTimeToGuaranteeMinMipCount=10\n"
+    L"MaxTimeToGuaranteeMinMipCount=18\n"
     L"MemoryLoss=0\n"
     L"MemoryMargin=192\n"
     L"MinEvictSize=64\n"
-    L"MinRequestedMipsToConsider=14\n"
-    L"MinTextureResidentMipCount=7\n"
-    L"MinTimeToGuaranteeMinMipCount=2\n"
+    L"MinRequestedMipsToConsider=13\n"
+    L"MinTextureResidentMipCount=5\n"
+    L"MinTimeToGuaranteeMinMipCount=3\n"
     L"PoolSize=4096\n"
-    L"ReflectionTexturePoolSize=96\n"
+    L"ReflectionTexturePoolSize=196\n"
     L"ShadowmapStreamingFactor=0.05\n"
-    L"StopIncreasingLimit=12\n"
-    L"StopStreamingLimit=8\n"
+    L"StopIncreasingLimit=10\n"
+    L"StopStreamingLimit=6\n"
     L"TemporalAAMemoryReserve=4.0\n"
     L"TextureFileCacheBulkDataAlignment=1\n"
     L"UseDynamicStreaming=True\n"
@@ -172,7 +175,7 @@ struct streaming_profiles {
     L"MinEvictSize=64\n"
     L"MinFudgeFactor=1\n"
     L"MinRequestedMipsToConsider=22\n"
-    L"MinTextureResidentMipCount=7\n"
+    L"MinTextureResidentMipCount=6\n"
     L"MinTimeToGuaranteeMinMipCount=0\n"
     L"PoolSize=16353\n"
     L"ReflectionTexturePoolSize=96\n"
@@ -184,7 +187,7 @@ struct streaming_profiles {
     L"UseDynamicStreaming=True\n"
     L"UsePriorityStreaming=True\n"
     L"UseTextureFileCache=False\n"
-    L"bAllowSwitchingStreamingSystem=True\n"
+    L"bAllowSwitchingStreamingSystem=False\n"
     L"bEnableAsyncDefrag=True\n"
     L"bEnableAsyncReallocation=True\n"
   };
@@ -287,50 +290,50 @@ struct texture_profiles {
 #else
     // 7/13/2015 -- Changed a few texture groups that might be causing issues on AMD hardware
     L"[SystemSettings]\n"
-    L"TEXTUREGROUP_Bokeh=(MinLODSize=128,MaxLODSize=512,LODBias=1,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
-    L"TEXTUREGROUP_Character=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_CharacterHigh=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_CharacterLow=(MinLODSize=128,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_CharacterNormalMap=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_CharacterSpecPower=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_CharacterSpecular=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_Cinematic=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_Effects=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
-    L"TEXTUREGROUP_EffectsNotFiltered=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
-    L"TEXTUREGROUP_ImageBasedReflection=(MinLODSize=128,MaxLODSize=128,LODBias=1,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
+    L"TEXTUREGROUP_Bokeh=(MinLODSize=128,MaxLODSize=512,LODBias=1,MinMagFilter=Aniso,MipFilter=Linear)\n"
+    L"TEXTUREGROUP_Character=(MinLODSize=64,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_CharacterHigh=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_CharacterLow=(MinLODSize=64,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_CharacterNormalMap=(MinLODSize=64,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_CharacterSpecPower=(MinLODSize=64,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_CharacterSpecular=(MinLODSize=64,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_Cinematic=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_Effects=(MinLODSize=1,MaxLODSize=1024,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_EffectsNotFiltered=(MinLODSize=1,MaxLODSize=2048,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_ImageBasedReflection=(MinLODSize=64,MaxLODSize=128,LODBias=1,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Blur10)\n"
     //L"TEXTUREGROUP_ImageBasedReflection=(MinLODSize=256,MaxLODSize=4096,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Blur5)\n"
-    L"TEXTUREGROUP_InteriorNormalMap_High=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_InteriorSpec_High=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_Interior_High=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_LOD1_Emissive=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
-    L"TEXTUREGROUP_LOD1_Opacity_Mask=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
-    L"TEXTUREGROUP_LOD1_RRM_Mask=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
-    L"TEXTUREGROUP_LightAndShadowMap=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
-    L"TEXTUREGROUP_Lightmap=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
+    L"TEXTUREGROUP_InteriorNormalMap_High=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_InteriorSpec_High=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_Interior_High=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_LOD1_Emissive=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_LOD1_Opacity_Mask=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_LOD1_RRM_Mask=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_LightAndShadowMap=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_Lightmap=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
     L"TEXTUREGROUP_MobileFlattened=(MinLODSize=1,MaxLODSize=4096,LODBias=0,MinMagFilter=aniso,MipFilter=point)\n"
-    L"TEXTUREGROUP_ProcBuilding_Face=(MinLODSize=256,MaxLODSize=4096,LODBias=0,MinMagFilter=aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen5)\n"
-    L"TEXTUREGROUP_ProcBuilding_LightMap=(MinLODSize=128,MaxLODSize=4096,LODBias=-1,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
-    L"TEXTUREGROUP_RenderTarget=(MinLODSize=1,MaxLODSize=2048,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
-    L"TEXTUREGROUP_Shadowmap=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
-    L"TEXTUREGROUP_Skybox=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_Terrain_Heightmap=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Aniso,MipFilter=Point,MipGenSettings=TMGS_SimpleAverage)\n"
-    L"TEXTUREGROUP_Terrain_Weightmap=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Aniso,MipFilter=Point,MipGenSettings=TMGS_SimpleAverage)\n"
-    L"TEXTUREGROUP_UI=(MinLODSize=512,MaxLODSize=4096,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_Vehicle=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_VehicleNormalMap=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_VehicleSpecular=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_Vehicle_High=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_Vehicle_Low=(MinLODSize=128,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_Weapon=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_WeaponNormalMap=(MinLODSize=128,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_WeaponSpecular=(MinLODSize=128,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_World=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_WorldNormalMap=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_WorldNormalMap_Hi=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_WorldSpecular=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_WorldSpecular_Hi=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_World_Hi=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
-    L"TEXTUREGROUP_World_Low=(MinLODSize=128,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_ProcBuilding_Face=(MinLODSize=256,MaxLODSize=4096,LODBias=0,MinMagFilter=aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_ProcBuilding_LightMap=(MinLODSize=128,MaxLODSize=4096,LODBias=-1,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_RenderTarget=(MinLODSize=1,MaxLODSize=2048,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_Shadowmap=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_Skybox=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_Terrain_Heightmap=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Point,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_Terrain_Weightmap=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Point,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_UI=(MinLODSize=512,MaxLODSize=4096,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_Vehicle=(MinLODSize=64,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_VehicleNormalMap=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_VehicleSpecular=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_Vehicle_High=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_Vehicle_Low=(MinLODSize=64,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_Weapon=(MinLODSize=64,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_WeaponNormalMap=(MinLODSize=64,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_WeaponSpecular=(MinLODSize=64,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_World=(MinLODSize=64,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0,NumStreamedMips=3)\n"
+    L"TEXTUREGROUP_WorldNormalMap=(MinLODSize=64,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0,NumStreamedMips=3)\n"
+    L"TEXTUREGROUP_WorldNormalMap_Hi=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_WorldSpecular=(MinLODSize=64,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0,NumStreamedMips=3)\n"
+    L"TEXTUREGROUP_WorldSpecular_Hi=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_World_Hi=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_World_Low=(MinLODSize=64,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
 #endif
   };
 } texgroups;
@@ -364,20 +367,11 @@ struct mip_fadeout_profiles {
 } fadeout;
 
 
-extern size_t BMT_GetGPUVRAM (void);
-extern size_t BMT_GetGART    (void);
-
-extern int          BMT_CountNVGPUs        (void);
-extern void         BMT_NVAPI_Init         (void);
-extern std::wstring BMT_GetNVDriverVersion (void);
-
-extern DXGI_ADAPTER_DESC* BMT_EnumNVGPUs (void);
-
 void tune_physx_memory (HWND hDlg, size_t& heap, size_t& mesh_cache)
 {
-  DXGI_ADAPTER_DESC* nv_adapters = BMT_EnumNVGPUs ();
+  DXGI_ADAPTER_DESC* nv_adapters = NVAPI::EnumGPUs_DXGI ();
 
-  if (BMT_CountNVGPUs () > 0) {
+  if (NVAPI::CountPhysicalGPUs () > 0) {
     int cur_sel = ComboBox_GetCurSel (GetDlgItem (hDlg, IDC_PHYSX_GPU));
 
     if (cur_sel > 0) {
@@ -395,10 +389,9 @@ void tune_physx_memory (HWND hDlg, size_t& heap, size_t& mesh_cache)
 void setup_driver_tweaks (HWND hDlg)
 {
   // If there is an NV GPU installed, display a special button!
-  if (BMT_CountNVGPUs () > 0) {
+  if (NVAPI::CountPhysicalGPUs () > 0) {
     std::wstring button_label = L"    NVIDIA Driver Tweaks\r\n    (Version: ";
-    button_label += BMT_GetNVDriverVersion ();
-    button_label += L")";
+    button_label += NVAPI::GetDriverVersion () + L")";
 
     SetWindowText (GetDlgItem (hDlg, IDC_NV_DRIVER_TWEAKS), button_label.c_str ());
     ShowWindow (GetDlgItem (hDlg, IDC_NV_DRIVER_TWEAKS), true);
@@ -413,9 +406,10 @@ void setup_driver_tweaks (HWND hDlg)
 
 void setup_physx_properties (HWND hDlg)
 {
-  DXGI_ADAPTER_DESC* nv_adapters = BMT_EnumNVGPUs ();
+  DXGI_ADAPTER_DESC* nv_adapters      = NVAPI::EnumGPUs_DXGI     ();
+  static int         physical_nv_gpus = NVAPI::CountPhysicalGPUs ();
 
-  if (BMT_CountNVGPUs () > 0) {
+  if (physical_nv_gpus > 0) {
     Button_Enable (GetDlgItem (hDlg, IDC_HARDWARE_PHYSX), true);
   }
   else {
@@ -434,15 +428,15 @@ void setup_physx_properties (HWND hDlg)
     int cur_sel = ComboBox_GetCurSel (GetDlgItem (hDlg, IDC_PHYSX_GPU));
 
     if (cur_sel < 0)
-      cur_sel = BMT_CountNVGPUs () - 1;
+      cur_sel = physical_nv_gpus - 1;
 
     ComboBox_ResetContent (GetDlgItem (hDlg, IDC_PHYSX_GPU));
-    for (int i = 0; i < BMT_CountNVGPUs (); i++) {
+    for (int i = 0; i < physical_nv_gpus; i++) {
       ComboBox_InsertString (GetDlgItem (hDlg, IDC_PHYSX_GPU), i, nv_adapters [i].Description);
     }
     ComboBox_SetCurSel (GetDlgItem (hDlg, IDC_PHYSX_GPU), cur_sel);
 
-    if (BMT_CountNVGPUs () > 1) {
+    if (physical_nv_gpus > 1) {
       if (ComboBox_GetCurSel (GetDlgItem (hDlg, IDC_PHYSX_GPU)) > 0)
         Button_Enable (GetDlgItem (hDlg, IDC_ULTRA_PHYSX), true);
       else
@@ -898,7 +892,7 @@ BMT_SetStreamingPoolSize (void)
   wchar_t wszPoolSize [32];
 
   // Convert from Bytes to MiB (Reserving 100%)
-  _ui64tow (BMT_GetGART () / 1024 / 1024, wszPoolSize, 10);
+  _ui64tow (DXGI::GetGART () / 1024 / 1024, wszPoolSize, 10);
 
   engine.set_value (L"TextureStreaming", L"PoolSize", wszPoolSize);
 }
@@ -909,7 +903,7 @@ BMT_SetStreamingMargin (void)
   wchar_t wszMargin [32];
 
   // Convert from Bytes to MiB (Reserving 5%)
-  _ui64tow (BMT_NextPowerOfTwo (size_t ((BMT_GetGPUVRAM () / 1024 / 1024) * 0.05f)), wszMargin, 10);
+  _ui64tow (BMT_NextPowerOfTwo (size_t ((DXGI::GetVRAM () / 1024 / 1024) * 0.05f)), wszMargin, 10);
 
   // Bytes to leave free
   engine.set_value (L"TextureStreaming", L"MemoryMargin", wszMargin);
@@ -921,7 +915,7 @@ BMT_SetStreamingEvictSize (void)
   wchar_t wszEvict [32];
 
   // Convert from Bytes to MiB (Reserving 1.25%)
-  _ui64tow (max (BMT_NextPowerOfTwo (size_t ((BMT_GetGPUVRAM () / 1024 / 1024) * 0.0125f)), 16), wszEvict, 10);
+  _ui64tow (max (BMT_NextPowerOfTwo (size_t ((DXGI::GetVRAM () / 1024 / 1024) * 0.0125f)), 16), wszEvict, 10);
 
   // Bytes to free when allocation fails
   engine.set_value (L"TextureStreaming", L"MinEvictSize", wszEvict);
@@ -936,6 +930,11 @@ BMT_OptimizeStreamingMemory (void)
 }
 
 INT_PTR CALLBACK DriverConfigNV (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+
+
+using namespace bmt;
+using namespace bmt::UI;
+using namespace bmt::XML;
 
 INT_PTR
 CALLBACK
@@ -962,15 +961,15 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       Button_GetIdealSize (GetDlgItem (hDlg, IDCANCEL), &size);
       SetWindowPos (GetDlgItem (hDlg, IDCANCEL), NULL, 0, 0, size.cx + 6, size.cy, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 
-      SetWindowText (hDlg, L"Batman Tweak v 0.42 (Beta HOTFIX)");
+      SetWindowText (hDlg, L"Batman Tweak v 0.43 (Beta)");
 
       hWndApp = hDlg;
 
+      NVAPI::InitializeLibrary ();
 
-      BMT_NVAPI_Init ();
-
-      if (!BMT_LoadXML ()) {
+      if (! LoadXML ()) {
         EndDialog (hDlg, FALSE);
+        NVAPI::UnloadLibrary ();
         return 0;
       }
 
@@ -978,88 +977,88 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       engine.load   (install_path);
 
       refresh_rate =
-        static_cast <bmt::ParameterInt *> (
-          bmt::g_ParameterFactory.create_parameter <int> (L"Refresh Rate")
+        static_cast <ParameterInt *> (
+          g_ParameterFactory.create_parameter <int> (L"Refresh Rate")
         );
 
-      refresh_rate->register_to_xml (BMT_XML_FindNode (bmak_gamesettings, L"RESOLUTION"), L"RefreshRate");
+      refresh_rate->register_to_xml (FindNode (bmak_gamesettings, L"RESOLUTION"), L"RefreshRate");
       refresh_rate->register_to_ini (engine.get_file (), L"Engine.Client", L"MinDesiredFrameRate");
-      refresh_rate->bind_to_control (new bmt::UI::EditBox (GetDlgItem (hDlg, IDC_REFRESH_RATE)));
+      refresh_rate->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_REFRESH_RATE)));
       refresh_rate->load ();
 
       res_x =
-        static_cast <bmt::ParameterInt *> (
-          bmt::g_ParameterFactory.create_parameter <int> (L"X Resolution")
+        static_cast <ParameterInt *> (
+          g_ParameterFactory.create_parameter <int> (L"X Resolution")
         );
 
-      res_x->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"ResolutionX"), L"Value");
+      res_x->register_to_xml (FindOption (bmak_gamesettings, L"ResolutionX"), L"Value");
       res_x->register_to_ini (settings.get_file (), L"SystemSettings", L"ResX");
-      res_x->bind_to_control (new bmt::UI::EditBox (GetDlgItem (hDlg, IDC_RES_X)));
+      res_x->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_RES_X)));
       res_x->load ();
 
       res_y =
-        static_cast <bmt::ParameterInt *> (
-          bmt::g_ParameterFactory.create_parameter <int> (L"Y Resolution")
+        static_cast <ParameterInt *> (
+          g_ParameterFactory.create_parameter <int> (L"Y Resolution")
         );
 
-      res_y->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"ResolutionY"), L"Value");
+      res_y->register_to_xml (FindOption (bmak_gamesettings, L"ResolutionY"), L"Value");
       res_y->register_to_ini (settings.get_file (), L"SystemSettings", L"ResY");
-      res_y->bind_to_control (new bmt::UI::EditBox (GetDlgItem (hDlg, IDC_RES_Y)));
+      res_y->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_RES_Y)));
       res_y->load ();
 
 
       max_fps =
-        static_cast <bmt::ParameterInt *> (
-          bmt::g_ParameterFactory.create_parameter <int> (L"Maximum Framerate")
+        static_cast <ParameterInt *> (
+          g_ParameterFactory.create_parameter <int> (L"Maximum Framerate")
         );
 
       max_fps->register_to_ini (settings.get_file (), L"SystemSettings", L"MaxFPS");
-      max_fps->bind_to_control (new bmt::UI::EditBox (GetDlgItem (hDlg, IDC_MAXFPS)));
+      max_fps->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_MAXFPS)));
       max_fps->load ();
 
 
       use_vsync =
-        static_cast <bmt::ParameterBool *> (
-          bmt::g_ParameterFactory.create_parameter <bool> (L"Use VSYNC")
+        static_cast <ParameterBool *> (
+          g_ParameterFactory.create_parameter <bool> (L"Use VSYNC")
         );
 
-      use_vsync->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Vsync"), L"Value");
+      use_vsync->register_to_xml (FindOption (bmak_gamesettings, L"Vsync"), L"Value");
       use_vsync->register_to_ini (settings.get_file (), L"SystemSettings", L"UseVsync");
-      use_vsync->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_VSYNC)));
+      use_vsync->bind_to_control (new CheckBox (GetDlgItem (hDlg, IDC_VSYNC)));
       use_vsync->load ();
 
 
       smooth_framerate =
-        static_cast <bmt::ParameterBool *> (
-          bmt::g_ParameterFactory.create_parameter <bool> (L"Framerate Smoothing")
+        static_cast <ParameterBool *> (
+          g_ParameterFactory.create_parameter <bool> (L"Framerate Smoothing")
         );
 
       smooth_framerate->register_to_ini (engine.get_file (), L"Engine.Engine", L"bSmoothFrameRate");
-      smooth_framerate->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_FRAMERATE_SMOOTHING)));
+      smooth_framerate->bind_to_control (new CheckBox (GetDlgItem (hDlg, IDC_FRAMERATE_SMOOTHING)));
       smooth_framerate->load ();
 
       smoothed_min =
-        static_cast <bmt::ParameterInt *> (
-          bmt::g_ParameterFactory.create_parameter <int> (L"Minimum Smoothed Range")
+        static_cast <ParameterInt *> (
+          g_ParameterFactory.create_parameter <int> (L"Minimum Smoothed Range")
         );
 
       smoothed_min->register_to_ini (engine.get_file (), L"Engine.Engine", L"MinSmoothedFrameRate");
-      smoothed_min->bind_to_control (new bmt::UI::EditBox (GetDlgItem (hDlg, IDC_MIN_SMOOTHED)));
+      smoothed_min->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_MIN_SMOOTHED)));
       smoothed_min->load ();
 
       smoothed_max =
-        static_cast <bmt::ParameterInt *> (
-          bmt::g_ParameterFactory.create_parameter <int> (L"Maximum Smoothed Range")
+        static_cast <ParameterInt *> (
+          g_ParameterFactory.create_parameter <int> (L"Maximum Smoothed Range")
         );
 
       smoothed_max->register_to_ini (engine.get_file (), L"Engine.Engine", L"MaxSmoothedFrameRate");
-      smoothed_max->bind_to_control (new bmt::UI::EditBox (GetDlgItem (hDlg, IDC_MAX_SMOOTHED)));
+      smoothed_max->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_MAX_SMOOTHED)));
       smoothed_max->load ();
 
 
       blur_samples =
-        static_cast <bmt::ParameterInt *> (
-          bmt::g_ParameterFactory.create_parameter <int> (L"Number of Blur Filter Samples")
+        static_cast <ParameterInt *> (
+          g_ParameterFactory.create_parameter <int> (L"Number of Blur Filter Samples")
         );
 
       blur_samples->register_to_ini (settings.get_file (), L"SystemSettings", L"MaxFilterBlurSampleCount");
@@ -1068,53 +1067,53 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
       // In some APIs this is a float, but let's just keep things simple (int).
       anisotropy =
-        static_cast <bmt::ParameterInt *> (
-          bmt::g_ParameterFactory.create_parameter <int> (L"Maximum Anisotropic Filter")
+        static_cast <ParameterInt *> (
+          g_ParameterFactory.create_parameter <int> (L"Maximum Anisotropic Filter")
         );
 
       anisotropy->register_to_ini (settings.get_file (), L"SystemSettings", L"MaxAnisotropy");
       anisotropy->load ();
 
       texture_res =
-        static_cast <bmt::ParameterInt *> (
-          bmt::g_ParameterFactory.create_parameter <int> (L"Texture Resolution Level")
+        static_cast <ParameterInt *> (
+          g_ParameterFactory.create_parameter <int> (L"Texture Resolution Level")
         );
 
-      texture_res->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Texture_Resolution"), L"Value");
+      texture_res->register_to_xml (FindOption (bmak_gamesettings, L"Texture_Resolution"), L"Value");
       texture_res->register_to_ini (settings.get_file (), L"SystemSettings", L"TextureResolution");
       texture_res->load ();
 
 
       hardware_physx =
-        static_cast <bmt::ParameterBool *> (
-          bmt::g_ParameterFactory.create_parameter <bool> (L"Disable Hardware PhysX")
+        static_cast <ParameterBool *> (
+          g_ParameterFactory.create_parameter <bool> (L"Disable Hardware PhysX")
       );
 
       Button_SetText (GetDlgItem (hDlg, IDC_HARDWARE_PHYSX), L"Disable Hardware PhysX");
       hardware_physx->register_to_ini (engine.get_file (), L"Engine.Engine", L"bDisablePhysXHardwareSupport");
-      hardware_physx->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_HARDWARE_PHYSX)));
+      hardware_physx->bind_to_control (new CheckBox (GetDlgItem (hDlg, IDC_HARDWARE_PHYSX)));
       hardware_physx->load ();
 
 
       physx_level =
-        static_cast <bmt::ParameterInt *> (
-          bmt::g_ParameterFactory.create_parameter <int> (L"PhysX Level")
+        static_cast <ParameterInt *> (
+          g_ParameterFactory.create_parameter <int> (L"PhysX Level")
         );
 
       physx_level->register_to_ini (engine.get_file (), L"Engine.Engine", L"PhysXLevel");
       physx_level->load ();
 
       physx_heap_size =
-        static_cast <bmt::ParameterInt64 *> (
-          bmt::g_ParameterFactory.create_parameter <int64_t> (L"PhysX Heap Size (GPU)")
+        static_cast <ParameterInt64 *> (
+          g_ParameterFactory.create_parameter <int64_t> (L"PhysX Heap Size (GPU)")
         );
 
       physx_heap_size->register_to_ini  (engine.get_file (), L"Engine.Engine", L"PhysXGpuHeapSize");
       physx_heap_size->load ();
 
       physx_mesh_cache =
-        static_cast <bmt::ParameterInt64 *> (
-          bmt::g_ParameterFactory.create_parameter <int64_t> (L"PhysX Mesh Cache (GPU)")
+        static_cast <ParameterInt64 *> (
+          g_ParameterFactory.create_parameter <int64_t> (L"PhysX Mesh Cache (GPU)")
         );
 
       physx_mesh_cache->register_to_ini (engine.get_file (), L"Engine.Engine", L"PhysXMeshCacheSize");
@@ -1122,114 +1121,114 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 
       enable_dx10 =
-        static_cast <bmt::ParameterBool *> (
-          bmt::g_ParameterFactory.create_parameter <bool> (L"Enable DX10 Features")
+        static_cast <ParameterBool *> (
+          g_ParameterFactory.create_parameter <bool> (L"Enable DX10 Features")
         );
 
       enable_dx10->register_to_ini (settings.get_file (), L"SystemSettings", L"AllowD3D10");
-      enable_dx10->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_DX10)));
+      enable_dx10->bind_to_control (new CheckBox (GetDlgItem (hDlg, IDC_DX10)));
       enable_dx10->load ();
 
       enable_dx11 =
-        static_cast <bmt::ParameterBool *> (
-          bmt::g_ParameterFactory.create_parameter <bool> (L"Enable DX11 Features")
+        static_cast <ParameterBool *> (
+          g_ParameterFactory.create_parameter <bool> (L"Enable DX11 Features")
         );
 
       enable_dx11->register_to_ini (settings.get_file (), L"SystemSettings", L"AllowD3D11");
-      enable_dx11->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_DX11)));
+      enable_dx11->bind_to_control (new CheckBox (GetDlgItem (hDlg, IDC_DX11)));
       enable_dx11->load ();
 
       enable_crossfire =
-        static_cast <bmt::ParameterBool *> (
-          bmt::g_ParameterFactory.create_parameter <bool> (L"Enable CrossFire")
+        static_cast <ParameterBool *> (
+          g_ParameterFactory.create_parameter <bool> (L"Enable CrossFire")
         );
 
       enable_crossfire->register_to_ini (settings.get_file (), L"SystemSettings", L"bEnableCrossfire");
-      enable_crossfire->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_CROSSFIRE)));
+      enable_crossfire->bind_to_control (new CheckBox (GetDlgItem (hDlg, IDC_CROSSFIRE)));
       enable_crossfire->load ();
 
 
       level_of_detail =
-        static_cast <bmt::ParameterInt *> (
-          bmt::g_ParameterFactory.create_parameter <int> (L"Level of Detail")
+        static_cast <ParameterInt *> (
+          g_ParameterFactory.create_parameter <int> (L"Level of Detail")
         );
 
-      level_of_detail->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Level_Of_Detail"), L"Value");
+      level_of_detail->register_to_xml (FindOption (bmak_gamesettings, L"Level_Of_Detail"), L"Value");
       level_of_detail->register_to_ini (settings.get_file (), L"SystemSettings", L"LevelOfDetail");
       level_of_detail->load ();
 
-      //level_of_detail2.register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Level_Of_Detail"), L"Value");
+      //level_of_detail2.register_to_xml (FindOption (bmak_gamesettings, L"Level_Of_Detail"), L"Value");
       //level_of_detail2.register_to_ini (settings.get_file (), L"SystemSettings", L"DetailMode");
       //level_of_detail2.load ();
 
       shadow_quality =
-        static_cast <bmt::ParameterInt *> (
-          bmt::g_ParameterFactory.create_parameter <int> (L"Shadow Quality")
+        static_cast <ParameterInt *> (
+          g_ParameterFactory.create_parameter <int> (L"Shadow Quality")
         );
 
-      shadow_quality->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Shadow_Quality"), L"Value");
+      shadow_quality->register_to_xml (FindOption (bmak_gamesettings, L"Shadow_Quality"), L"Value");
       shadow_quality->register_to_ini (settings.get_file (), L"SystemSettings", L"ShadowQuality");
       shadow_quality->load ();
 
       antialiasing =
-        static_cast <bmt::ParameterInt *> (
-          bmt::g_ParameterFactory.create_parameter <int> (L"Antialiasing")
+        static_cast <ParameterInt *> (
+          g_ParameterFactory.create_parameter <int> (L"Antialiasing")
         );
 
-      antialiasing->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Anti-Aliasing"), L"Value");
+      antialiasing->register_to_xml (FindOption (bmak_gamesettings, L"Anti-Aliasing"), L"Value");
       antialiasing->register_to_ini (settings.get_file (), L"SystemSettings", L"Antialiasing");
-      antialiasing->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_ANTIALIASING)));
+      antialiasing->bind_to_control (new CheckBox (GetDlgItem (hDlg, IDC_ANTIALIASING)));
       antialiasing->load ();
 
 
       interactive_debris =
-        static_cast <bmt::ParameterBool *> (
-          bmt::g_ParameterFactory.create_parameter <bool> (L"Interactive Paper Debris")
+        static_cast <ParameterBool *> (
+          g_ParameterFactory.create_parameter <bool> (L"Interactive Paper Debris")
         );
 
-      interactive_debris->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Interactive_Paper_Debris"), L"Value");
+      interactive_debris->register_to_xml (FindOption (bmak_gamesettings, L"Interactive_Paper_Debris"), L"Value");
       interactive_debris->register_to_ini (settings.get_file (), L"SystemSettings", L"bEnableInteractivePaperDebris");
-      interactive_debris->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_INTERACTIVE_DEBRIS)));
+      interactive_debris->bind_to_control (new CheckBox (GetDlgItem (hDlg, IDC_INTERACTIVE_DEBRIS)));
       interactive_debris->load ();
 
       interactive_smoke =
-        static_cast <bmt::ParameterBool *> (
-          bmt::g_ParameterFactory.create_parameter <bool> (L"Interactive Smoke")
+        static_cast <ParameterBool *> (
+          g_ParameterFactory.create_parameter <bool> (L"Interactive Smoke")
         );
 
-      interactive_smoke->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Interactive_Smoke"), L"Value");
+      interactive_smoke->register_to_xml (FindOption (bmak_gamesettings, L"Interactive_Smoke"), L"Value");
       interactive_smoke->register_to_ini (settings.get_file (), L"SystemSettings", L"bEnableInteractiveSmoke");
-      interactive_smoke->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_INTERACTIVE_SMOKE)));
+      interactive_smoke->bind_to_control (new CheckBox (GetDlgItem (hDlg, IDC_INTERACTIVE_SMOKE)));
       interactive_smoke->load ();
 
       enhanced_rain =
-        static_cast <bmt::ParameterBool *> (
-          bmt::g_ParameterFactory.create_parameter <bool> (L"Interactive Smoke")
+        static_cast <ParameterBool *> (
+          g_ParameterFactory.create_parameter <bool> (L"Interactive Smoke")
         );
 
-      enhanced_rain->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Rain_FX"), L"Value");
+      enhanced_rain->register_to_xml (FindOption (bmak_gamesettings, L"Rain_FX"), L"Value");
       enhanced_rain->register_to_ini (settings.get_file (), L"SystemSettings", L"bEnableRainFX");
-      enhanced_rain->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_ENHANCED_RAIN)));
+      enhanced_rain->bind_to_control (new CheckBox (GetDlgItem (hDlg, IDC_ENHANCED_RAIN)));
       enhanced_rain->load ();
 
       enhanced_lightshafts = 
-        static_cast <bmt::ParameterBool *> (
-          bmt::g_ParameterFactory.create_parameter <bool> (L"Volumetric Lighting (Enhanced Lightshafts)")
+        static_cast <ParameterBool *> (
+          g_ParameterFactory.create_parameter <bool> (L"Volumetric Lighting (Enhanced Lightshafts)")
         );
 
-      enhanced_lightshafts->register_to_xml (BMT_XML_FindOption (bmak_gamesettings, L"Volumetric_Lighting"), L"Value");
+      enhanced_lightshafts->register_to_xml (FindOption (bmak_gamesettings, L"Volumetric_Lighting"), L"Value");
       enhanced_lightshafts->register_to_ini (settings.get_file (), L"SystemSettings", L"bEnableVolumetricLighting");
-      enhanced_lightshafts->bind_to_control (new bmt::UI::CheckBox (GetDlgItem (hDlg, IDC_ENHANCED_LIGHT_SHAFTS)));
+      enhanced_lightshafts->bind_to_control (new CheckBox (GetDlgItem (hDlg, IDC_ENHANCED_LIGHT_SHAFTS)));
       enhanced_lightshafts->load ();
 
 
       mip_fadein0 =
-        static_cast <bmt::ParameterFloat *> (
-          bmt::g_ParameterFactory.create_parameter <float> (L"Mipmap LOD0 FadeIn Rate")
+        static_cast <ParameterFloat *> (
+          g_ParameterFactory.create_parameter <float> (L"Mipmap LOD0 FadeIn Rate")
         );
       mip_fadein1 =
-        static_cast <bmt::ParameterFloat *> (
-          bmt::g_ParameterFactory.create_parameter <float> (L"Mipmap LOD1 FadeIn Rate")
+        static_cast <ParameterFloat *> (
+          g_ParameterFactory.create_parameter <float> (L"Mipmap LOD1 FadeIn Rate")
         );
       mip_fadein0->register_to_ini (engine.get_file (), L"Engine.Engine", L"MipFadeInSpeed0");
       mip_fadein0->load ();
@@ -1237,12 +1236,12 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       mip_fadein1->load ();
 
       mip_fadeout0 =
-        static_cast <bmt::ParameterFloat *> (
-          bmt::g_ParameterFactory.create_parameter <float> (L"Mipmap LOD0 FadeOut Rate")
+        static_cast <ParameterFloat *> (
+          g_ParameterFactory.create_parameter <float> (L"Mipmap LOD0 FadeOut Rate")
         );
       mip_fadeout1 =
-        static_cast <bmt::ParameterFloat *> (
-          bmt::g_ParameterFactory.create_parameter <float> (L"Mipmap LOD1 FadeOut Rate")
+        static_cast <ParameterFloat *> (
+          g_ParameterFactory.create_parameter <float> (L"Mipmap LOD1 FadeOut Rate")
         );
       mip_fadeout0->register_to_ini (engine.get_file (), L"Engine.Engine", L"MipFadeOutSpeed0");
       mip_fadeout0->load ();
@@ -1251,8 +1250,8 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 
       shadow_scale =
-        static_cast <bmt::ParameterFloat *> (
-          bmt::g_ParameterFactory.create_parameter <float> (L"Shadow Scale (Shadow Texels Per-Pixel)")
+        static_cast <ParameterFloat *> (
+          g_ParameterFactory.create_parameter <float> (L"Shadow Scale (Shadow Texels Per-Pixel)")
         );
 
       shadow_scale->register_to_ini (settings.get_file (), L"SystemSettings", L"ShadowTexelsPerPixel");
@@ -1260,25 +1259,25 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 
       framerate_limiting =
-        static_cast <bmt::ParameterInt *> (
-          bmt::g_ParameterFactory.create_parameter <int> (L"Frame Rate Limiting Setting (not what it sounds like)")
+        static_cast <ParameterInt *> (
+          g_ParameterFactory.create_parameter <int> (L"Frame Rate Limiting Setting (not what it sounds like)")
         );
 
       framerate_limiting->register_to_ini (engine.get_file (), L"Engine.Engine", L"FrameRateLimitingSetting");
       framerate_limiting->load ();
 
       max_delta_time =
-        static_cast <bmt::ParameterFloat *> (
-          bmt::g_ParameterFactory.create_parameter <float> (L"Maximum Delta Time")
-          );
+        static_cast <ParameterFloat *> (
+          g_ParameterFactory.create_parameter <float> (L"Maximum Delta Time")
+        );
 
       max_delta_time->register_to_ini (engine.get_file (), L"Engine.GameEngine", L"MaxDeltaTime");
       max_delta_time->load ();
 
 
       visibility_frames =
-        static_cast <bmt::ParameterInt *> (
-          bmt::g_ParameterFactory.create_parameter <int> (L"Primitive Probably Visible Time")
+        static_cast <ParameterInt *> (
+          g_ParameterFactory.create_parameter <int> (L"Primitive Probably Visible Time")
         );
 
       visibility_frames->register_to_ini (engine.get_file (), L"Engine.Engine", L"PrimitiveProbablyVisibleTime");
@@ -1286,12 +1285,12 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 
       setup_physx_properties (hDlg);
-      setup_blur_samples (hDlg);
-      setup_tex_filter (hDlg);
-      setup_tex_res (hDlg);
-      setup_level_of_detail (hDlg);
-      setup_shadow_quality (hDlg);
-      setup_shadow_scale (hDlg);
+      setup_blur_samples     (hDlg);
+      setup_tex_filter       (hDlg);
+      setup_tex_res          (hDlg);
+      setup_level_of_detail  (hDlg);
+      setup_shadow_quality   (hDlg);
+      setup_shadow_scale     (hDlg);
 
       setup_driver_tweaks (hDlg);
 
@@ -1299,20 +1298,19 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       setup_max_delta_time     (hDlg);
       setup_visibility_frames  (hDlg);
 
-      setup_fadein (hDlg);
+      setup_fadein  (hDlg);
       setup_fadeout (hDlg);
 
 
-      extern std::wstring BMT_GetGPUInfo (void);
-      std::wstring gpu_str = BMT_GetGPUInfo ();
+      std::wstring gpu_str = DXGI::GetGPUInfo ();
 
       Edit_SetText (GetDlgItem (hDlg, IDC_GPUINFO), gpu_str.c_str ());
 
 
       xml_node <wchar_t>* display_mode =
-        BMT_XML_FindOption (bmak_gamesettings, L"Display_Mode");
+        FindOption (bmak_gamesettings, L"Display_Mode");
       xml_attribute <wchar_t>* display_mode_val =
-        BMT_XML_FindAttrib (display_mode, L"Value");
+        FindAttrib (display_mode, L"Value");
 
       int window_mode = _wtoi (display_mode_val->value ());
 
@@ -1427,6 +1425,7 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
       if (LOWORD (wParam) == IDCANCEL)
       {
+        NVAPI::UnloadLibrary ();
         EndDialog (hDlg, LOWORD (wParam));
         return (INT_PTR)TRUE;
       }
@@ -1499,9 +1498,9 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         //
 
         xml_node <wchar_t>* display_mode =
-          BMT_XML_FindOption (bmak_gamesettings, L"Display_Mode");
+          FindOption (bmak_gamesettings, L"Display_Mode");
         xml_attribute <wchar_t>* display_mode_val =
-          BMT_XML_FindAttrib (display_mode, L"Value");
+          FindAttrib (display_mode, L"Value");
 
         int window_mode = 0;
 
@@ -1523,10 +1522,13 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
           settings.set_value (L"SystemSettings", L"WindowDisplayMode", L"2");
         }
 
-        BMT_SaveXML ();
+        SaveXML ();
 
         settings.save (install_path);
         engine.save   (install_path);
+
+        NVAPI::UnloadLibrary ();
+
         EndDialog (hDlg, TRUE);
         return (INT_PTR)TRUE;
       }
@@ -1534,6 +1536,7 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
     case WM_DESTROY:
     {
+      NVAPI::UnloadLibrary ();
       //int ret = MessageBox (NULL, L"Quit Without Saving?", L"Settings Have Not Been Saved", MB_YESNOCANCEL);
 
       //if (ret == IDOK)

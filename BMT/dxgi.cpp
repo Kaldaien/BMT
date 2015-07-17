@@ -2,30 +2,20 @@
 #define _CRT_SECURE_NO_WARNINGS
 
 #include <Windows.h>
-#include <d3d11.h>
-#include <dxgi.h>
 #include <cstdio>
+
+#include "dxgi.h"
+#include "nvapi.h"
+
 #pragma comment (lib, "dxgi.lib")
 #pragma comment (lib, "dxguid.lib")
-#pragma comment (lib, "d3d11.lib")
 
-extern bool nv_hardware;
-
-#include <string>
-
-// TODO: There's a lot of re-used code here, fix that!
-
-extern int BMT_CountNVGPUs (void);
-
-enum BMT_GPUMemoryPool {
-  Dedicated,
-  GART
-};
+using namespace bmt;
 
 size_t
-BMT_GetAdapterPool (BMT_GPUMemoryPool pool)
+DXGI::GetAdapterPool (DXGI::GPUMemoryPool pool)
 {
-  if (! BMT_CountNVGPUs ()) {
+  if (! NVAPI::CountPhysicalGPUs ()) {
     IDXGIFactory* pFactory = NULL;
     CreateDXGIFactory (__uuidof(IDXGIFactory), (void **)&pFactory);
 
@@ -52,9 +42,7 @@ BMT_GetAdapterPool (BMT_GPUMemoryPool pool)
   }
 
   else {
-    extern DXGI_ADAPTER_DESC* BMT_EnumNVGPUs (void);
-
-    DXGI_ADAPTER_DESC* adapter_descs = BMT_EnumNVGPUs ();
+    DXGI_ADAPTER_DESC* adapter_descs = NVAPI::EnumGPUs_DXGI ();
 
     int i = 0;
 
@@ -70,24 +58,24 @@ BMT_GetAdapterPool (BMT_GPUMemoryPool pool)
 }
 
 size_t
-BMT_GetGART (void)
+DXGI::GetGART (void)
 {
-  return BMT_GetAdapterPool (GART);
+  return GetAdapterPool (GART);
 }
 
 size_t
-BMT_GetGPUVRAM (void)
+DXGI::GetVRAM (void)
 {
-  return BMT_GetAdapterPool (Dedicated);
+  return GetAdapterPool (Dedicated);
 }
 
 std::wstring
-BMT_GetGPUInfo (void)
+DXGI::GetGPUInfo (void)
 {
-  wchar_t adapters [4096];
+  static wchar_t adapters [4096];
   *adapters = L'\0';
 
-  if (! BMT_CountNVGPUs ()) {
+  if (!NVAPI::CountPhysicalGPUs ()) {
     IDXGIFactory* pFactory = NULL;
     CreateDXGIFactory (__uuidof(IDXGIFactory), (void **)&pFactory);
 
@@ -117,9 +105,7 @@ BMT_GetGPUInfo (void)
     pFactory->Release ();
   }
   else {
-    extern DXGI_ADAPTER_DESC* BMT_EnumNVGPUs (void);
-
-    DXGI_ADAPTER_DESC* adapter_descs = BMT_EnumNVGPUs ();
+    DXGI_ADAPTER_DESC* adapter_descs = NVAPI::EnumGPUs_DXGI ();
 
     int i = 0;
 

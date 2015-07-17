@@ -72,7 +72,7 @@ public:
       return true;
     }
     else if (ini != nullptr) {
-      BMT_INI_File::Section& section = ini->get_section (ini_section);
+      INI::File::Section& section = ini->get_section (ini_section);
 
       if (section.contains_key (ini_key)) {
         set_value_str (section.get_value (ini_key));
@@ -98,7 +98,7 @@ public:
       ret = true;
     }
     if (ini != nullptr) {
-      BMT_INI_File::Section& section = ini->get_section (ini_section);
+      INI::File::Section& section = ini->get_section (ini_section);
 
       if (section.contains_key (ini_key)) {
         section.get_value (ini_key) = backing_string;
@@ -109,18 +109,18 @@ public:
     return ret;
   }
 
-  void register_to_ini (BMT_INI_File* file, std::wstring section, std::wstring key)
+  void register_to_ini (INI::File* file, std::wstring section, std::wstring key)
   {
-    ini = file;
+    ini         = file;
     ini_section = section;
-    ini_key = key;
+    ini_key     = key;
   }
 
   void register_to_xml (xml_node <wchar_t>* node, std::wstring attrib_name)
   {
     if (node != nullptr) {
       xml_attrib =
-        BMT_XML_FindAttrib (node, attrib_name.c_str ());
+        XML::FindAttrib (node, attrib_name.c_str ());
     }
   }
 
@@ -135,7 +135,7 @@ protected:
 
 private:
   xml_attribute <wchar_t>* xml_attrib;
-  BMT_INI_File*            ini;
+  INI::File*               ini;
   std::wstring             ini_section;
   std::wstring             ini_key;
 };
@@ -216,52 +216,52 @@ private:
 }
 
 
-bmt::ParameterInt*  refresh_rate;
-bmt::ParameterInt* res_x;
-bmt::ParameterInt* res_y;
-bmt::ParameterInt* max_fps;
+static bmt::ParameterInt*  refresh_rate;
+static bmt::ParameterInt* res_x;
+static bmt::ParameterInt* res_y;
+static bmt::ParameterInt* max_fps;
 
-bmt::ParameterBool* use_vsync;
-bmt::ParameterBool* smooth_framerate;
+static bmt::ParameterBool* use_vsync;
+static bmt::ParameterBool* smooth_framerate;
 
-bmt::ParameterInt*  smoothed_min;
-bmt::ParameterInt*  smoothed_max;
+static bmt::ParameterInt*  smoothed_min;
+static bmt::ParameterInt*  smoothed_max;
 
 
-bmt::ParameterBool*  hardware_physx;
-bmt::ParameterInt*   physx_level;
-bmt::ParameterInt64* physx_heap_size;
-bmt::ParameterInt64* physx_mesh_cache;
+static bmt::ParameterBool*  hardware_physx;
+static bmt::ParameterInt*   physx_level;
+static bmt::ParameterInt64* physx_heap_size;
+static bmt::ParameterInt64* physx_mesh_cache;
 
-bmt::ParameterInt*  blur_samples;
+static bmt::ParameterInt*  blur_samples;
 
-bmt::ParameterInt*  anisotropy;
-bmt::ParameterInt*  texture_res;
+static bmt::ParameterInt*  anisotropy;
+static bmt::ParameterInt*  texture_res;
 
-bmt::ParameterBool* enable_dx10;
-bmt::ParameterBool* enable_dx11;
-bmt::ParameterBool* enable_crossfire;
+static bmt::ParameterBool* enable_dx10;
+static bmt::ParameterBool* enable_dx11;
+static bmt::ParameterBool* enable_crossfire;
 
-bmt::ParameterInt*  level_of_detail;
-bmt::ParameterInt*  level_of_detail2; // Temp hack, need a way to store parameters in multiple INI keys
-bmt::ParameterInt*  shadow_quality;
-bmt::ParameterInt*  antialiasing;
+static bmt::ParameterInt*  level_of_detail;
+static bmt::ParameterInt*  level_of_detail2; // Temp hack, need a way to store parameters in multiple INI keys
+static bmt::ParameterInt*  shadow_quality;
+static bmt::ParameterInt*  antialiasing;
 
-bmt::ParameterBool*  interactive_debris;
-bmt::ParameterBool*  interactive_smoke;
-bmt::ParameterBool*  enhanced_rain;
-bmt::ParameterBool*  enhanced_lightshafts;
+static bmt::ParameterBool*  interactive_debris;
+static bmt::ParameterBool*  interactive_smoke;
+static bmt::ParameterBool*  enhanced_rain;
+static bmt::ParameterBool*  enhanced_lightshafts;
 
-bmt::ParameterFloat* mip_fadein0;
-bmt::ParameterFloat* mip_fadein1;
+static bmt::ParameterFloat* mip_fadein0;
+static bmt::ParameterFloat* mip_fadein1;
 
-bmt::ParameterFloat* mip_fadeout0;
-bmt::ParameterFloat* mip_fadeout1;
+static bmt::ParameterFloat* mip_fadeout0;
+static bmt::ParameterFloat* mip_fadeout1;
 
-bmt::ParameterFloat* shadow_scale;
+static bmt::ParameterFloat* shadow_scale;
 
-bmt::ParameterInt*   framerate_limiting;
-bmt::ParameterFloat* max_delta_time;
-bmt::ParameterInt*   visibility_frames;
+static bmt::ParameterInt*   framerate_limiting;
+static bmt::ParameterFloat* max_delta_time;
+static bmt::ParameterInt*   visibility_frames;
 
 #endif /* __BMT__PARAMETER_H__ */

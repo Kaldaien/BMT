@@ -7,7 +7,7 @@
 #include "utility.h"
 #include <string>
 
-BMT_INI_File::BMT_INI_File (wchar_t* filename)
+bmt::INI::File::File (wchar_t* filename)
 {
   // We skip a few bytes (Unicode BOM) in crertain cirumstances, so this is the
   //   actual pointer we need to free...
@@ -59,7 +59,7 @@ BMT_INI_File::BMT_INI_File (wchar_t* filename)
   }
 }
 
-BMT_INI_File::~BMT_INI_File(void)
+bmt::INI::File::~File (void)
 {
   if (wszName != nullptr) {
     delete [] wszName;
@@ -72,10 +72,10 @@ BMT_INI_File::~BMT_INI_File(void)
   }
 }
 
-BMT_INI_File::Section
+bmt::INI::File::Section
 Process_Section (wchar_t* buffer, wchar_t* name, int start, int end)
 {
-  BMT_INI_File::Section section (name);
+  bmt::INI::File::Section section (name);
 
   int key = start;
   for (int k = key; k < end; k++) {
@@ -110,7 +110,7 @@ Process_Section (wchar_t* buffer, wchar_t* name, int start, int end)
 }
 
 bool
-Import_Section (BMT_INI_File::Section& section, wchar_t* buffer, int start, int end)
+Import_Section (bmt::INI::File::Section& section, wchar_t* buffer, int start, int end)
 {
   int key = start;
   for (int k = key; k < end; k++) {
@@ -152,7 +152,7 @@ Import_Section (BMT_INI_File::Section& section, wchar_t* buffer, int start, int 
 }
 
 void
-BMT_INI_File::parse (void)
+bmt::INI::File::parse (void)
 {
   if (wszData != nullptr) {
     int len = lstrlenW (wszData);
@@ -231,7 +231,7 @@ BMT_INI_File::parse (void)
 }
 
 void
-BMT_INI_File::import (std::wstring import_data)
+bmt::INI::File::import (std::wstring import_data)
 {
   wchar_t* wszImport = _wcsdup (import_data.c_str ());
 
@@ -326,7 +326,7 @@ BMT_INI_File::import (std::wstring import_data)
 std::wstring invalid = L"Invalid";
 
 std::wstring&
-BMT_INI_File::Section::get_value (std::wstring key)
+bmt::INI::File::Section::get_value (std::wstring key)
 {
   for (std::multimap <std::wstring, std::wstring>::iterator it = pairs.begin ();
          it != pairs.end ();
@@ -343,7 +343,7 @@ BMT_INI_File::Section::get_value (std::wstring key)
 }
 
 bool
-BMT_INI_File::Section::contains_key (std::wstring key)
+bmt::INI::File::Section::contains_key (std::wstring key)
 {
   for (std::multimap <std::wstring, std::wstring>::iterator it = pairs.begin ();
   it != pairs.end ();
@@ -356,25 +356,25 @@ BMT_INI_File::Section::contains_key (std::wstring key)
 }
 
 void
-BMT_INI_File::Section::add_key_value (std::wstring key, std::wstring value)
+bmt::INI::File::Section::add_key_value (std::wstring key, std::wstring value)
 {
   pairs.insert (std::pair <std::wstring, std::wstring> (key, value));
 }
 
 bool
-BMT_INI_File::contains_section (std::wstring section)
+bmt::INI::File::contains_section (std::wstring section)
 {
   return sections.find (section) != sections.end ();
 }
 
-BMT_INI_File::Section&
-BMT_INI_File::get_section (std::wstring section)
+bmt::INI::File::Section&
+bmt::INI::File::get_section (std::wstring section)
 {
   return sections [section];// sections.find (section);
 }
 
 void
-BMT_INI_File::write (std::wstring fname)
+bmt::INI::File::write (std::wstring fname)
 {
   FILE* fOut;
   errno_t ret = _wfopen_s (&fOut, fname.c_str (), L"w,ccs=UTF-16LE");
@@ -409,8 +409,8 @@ BMT_INI_File::write (std::wstring fname)
 }
 
 
-const std::map <std::wstring, BMT_INI_File::Section>&
-BMT_INI_File::get_sections (void)
+const std::map <std::wstring, bmt::INI::File::Section>&
+bmt::INI::File::get_sections (void)
 {
   return sections;
 }

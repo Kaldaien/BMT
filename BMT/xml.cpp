@@ -5,7 +5,7 @@
 #include <cstring>
 
 xml_node<wchar_t>*
-BMT_XML_FindNode (xml_node<wchar_t>* parent_node, std::wstring name)
+bmt::XML::FindNode (xml_node<wchar_t>* parent_node, std::wstring name)
 {
   if (parent_node == NULL)
     return NULL;
@@ -21,7 +21,7 @@ BMT_XML_FindNode (xml_node<wchar_t>* parent_node, std::wstring name)
 }
 
 xml_attribute<wchar_t>*
-BMT_XML_FindAttrib (xml_node<wchar_t>* parent_node, std::wstring name)
+bmt::XML::FindAttrib (xml_node<wchar_t>* parent_node, std::wstring name)
 {
   if (parent_node == NULL)
     return NULL;
@@ -37,7 +37,7 @@ BMT_XML_FindAttrib (xml_node<wchar_t>* parent_node, std::wstring name)
 }
 
 xml_node<wchar_t>*
-BMT_XML_FindOption (xml_node<wchar_t>* parent_node, std::wstring name)
+bmt::XML::FindOption (xml_node<wchar_t>* parent_node, std::wstring name)
 {
   if (parent_node == NULL)
     return NULL;
@@ -61,16 +61,16 @@ BMT_XML_FindOption (xml_node<wchar_t>* parent_node, std::wstring name)
   return NULL;
 }
 
-std::wstring executable;
-std::wstring install_path;
-xml_document<wchar_t> bmak_xml;
+//std::wstring bmt::XML::executable;
+std::wstring bmt::XML::install_path;
+xml_document<wchar_t> bmt::XML::bmak_xml;
 
-xml_node<wchar_t>* bmak_root;
-xml_node<wchar_t>* bmak_application;
-xml_node<wchar_t>* bmak_gamesettings;
+xml_node<wchar_t>* bmt::XML::bmak_root;
+xml_node<wchar_t>* bmt::XML::bmak_application;
+xml_node<wchar_t>* bmt::XML::bmak_gamesettings;
 
 void
-BMT_SaveXML (void)
+bmt::XML::SaveXML (void)
 {
   std::wstring documents_dir = BMT_GetDocumentsDir ();
 
@@ -112,7 +112,7 @@ BMT_SaveXML (void)
 }
 
 bool
-BMT_LoadXML (void)
+bmt::XML::LoadXML (void)
 {
   wchar_t wszXML [1024];
 
@@ -161,21 +161,21 @@ BMT_LoadXML (void)
   }
 
   bmak_application  = bmak_root->first_node ();
-  bmak_gamesettings = BMT_XML_FindNode (bmak_root, L"GAMESETTINGS");
+  bmak_gamesettings = FindNode (bmak_root, L"GAMESETTINGS");
 
   xml_attribute <wchar_t>* install_path_attrib =
-    BMT_XML_FindAttrib (BMT_XML_FindNode (bmak_application, L"INSTALLPATH"), L"Value");
+    FindAttrib (FindNode (bmak_application, L"INSTALLPATH"), L"Value");
 
   if (install_path_attrib != NULL) {
     install_path = install_path_attrib->value ();
   }
 
   xml_attribute <wchar_t>* exec_cmd_attrib =
-    BMT_XML_FindAttrib (BMT_XML_FindNode (bmak_application, L"EXECCMD"), L"Value");
+    FindAttrib (FindNode (bmak_application, L"EXECCMD"), L"Value");
 
-  if (exec_cmd_attrib != NULL && install_path_attrib != NULL) {
-    executable = install_path_attrib->value () + std::wstring (exec_cmd_attrib->value ()) + std::wstring (L".exe");
-  }
+  //if (exec_cmd_attrib != NULL && install_path_attrib != NULL) {
+    //executable = install_path_attrib->value () + std::wstring (exec_cmd_attrib->value ()) + std::wstring (L".exe");
+  //}
 
   return true;
 }
