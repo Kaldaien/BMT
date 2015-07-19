@@ -12,6 +12,9 @@ struct DXGI_ADAPTER_DESC;
 namespace bmt {
 namespace NVAPI {
 
+// r353_23
+#define MINIMUM_DRIVER_VERSION 35330
+
   BOOL InitializeLibrary (void);
   BOOL UnloadLibrary     (void);
 
@@ -20,7 +23,15 @@ namespace NVAPI {
        EnumGPUs_DXGI     (void);
 
   std::wstring
-       GetDriverVersion  (void);
+       GetDriverVersion  (NvU32* pVer = NULL);
+
+  // In typical NVIDIA fashion, you literally cannot
+  //   run this game without updating your driver first.
+  //
+  //   The game doesn't ever check this, so we might as well do
+  //     that too.
+  bool
+    CheckDriverVersion   (void);
 
   std::wstring
        ErrorMessage      (_NvAPI_Status err,

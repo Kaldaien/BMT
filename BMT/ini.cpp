@@ -7,6 +7,41 @@
 #include "utility.h"
 #include <string>
 
+std::wstring
+ErrorMessage (errno_t        err,
+              const char*    args,
+              const wchar_t* ini_name,
+              UINT           line_no,
+              const char*    function_name,
+              const char*    file_name)
+{
+  wchar_t wszFile           [256];
+  wchar_t wszFunction       [256];
+  wchar_t wszArgs           [256];
+  wchar_t wszFormattedError [1024];
+
+  MultiByteToWideChar (CP_OEMCP, 0, file_name,     -1, wszFile,     256);
+  MultiByteToWideChar (CP_OEMCP, 0, function_name, -1, wszFunction, 256);
+  MultiByteToWideChar (CP_OEMCP, 0, args,          -1, wszArgs,     256);
+  *wszFormattedError = L'\0';
+
+  swprintf (wszFormattedError, 1024,
+    L"Line %u of %s (in %s (...)):\n"
+    L"------------------------\n\n"
+    L"%s\n\n  File: %s\n\n"
+    L"\t>> %s <<",
+    line_no,
+    wszFile,
+    wszFunction,
+    wszArgs,
+    ini_name,
+    _wcserror (err));
+
+  return wszFormattedError;
+}
+
+#define TRY_FILE_IO(x,y,z) { (z) = ##x; if ((z) != 0) BMT_MessageBox (ErrorMessage ((z), #x, (y), __LINE__, __FUNCTION__, __FILE__), L"File I/O Error", MB_OK | MB_ICONSTOP ); }
+
 bmt::INI::File::File (wchar_t* filename)
 {
   // We skip a few bytes (Unicode BOM) in crertain cirumstances, so this is the
@@ -14,8 +49,9 @@ bmt::INI::File::File (wchar_t* filename)
   wchar_t* alloc;
 
   wszName = _wcsdup (filename);
-
-  errno_t ret = _wfopen_s (&fINI, filename, L"rb");
+  
+  errno_t ret;
+  TRY_FILE_IO (_wfopen_s (&fINI, filename, L"rb"), filename, ret);
 
   if (ret == 0 && fINI != 0) {
                 fseek  (fINI, 0, SEEK_END);
@@ -376,11 +412,13 @@ bmt::INI::File::get_section (std::wstring section)
 void
 bmt::INI::File::write (std::wstring fname)
 {
-  FILE* fOut;
-  errno_t ret = _wfopen_s (&fOut, fname.c_str (), L"w,ccs=UTF-16LE");
+  FILE*   fOut;
+  errno_t ret;
+
+  TRY_FILE_IO (_wfopen_s (&fOut, fname.c_str (), L"w,ccs=UTF-16LE"), fname.c_str (), ret);
 
   if (ret != 0 || fOut == 0) {
-    BMT_MessageBox (L"ERROR: Cannot open INI file for writing. Is it read-only?", fname.c_str (), MB_OK | MB_ICONSTOP);
+    //BMT_MessageBox (L"ERROR: Cannot open INI file for writing. Is it read-only?", fname.c_str (), MB_OK | MB_ICONSTOP);
     return;
   }
 

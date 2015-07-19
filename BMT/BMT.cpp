@@ -22,6 +22,8 @@
 
 using namespace bmt;
 
+#define BMT_VERSION_STR L"0.45"
+
 INT_PTR CALLBACK  Config (HWND, UINT, WPARAM, LPARAM);
 
 HWND  hWndApp;
@@ -120,7 +122,7 @@ struct streaming_profiles {
   { L"[TextureStreaming]\n"
     L"AllowStreamingLightmaps=True\n"
     L"BoostPlayerTextures=4.0\n"
-    L"DropMipLevelsLimit=13\n"
+    L"DropMipLevelsLimit=14\n"
     L"FudgeFactorDecreaseRateOfChange=-0.4\n"
     L"FudgeFactorIncreaseRateOfChange=0.5\n"
     L"HysteresisLimit=19\n"
@@ -129,18 +131,18 @@ struct streaming_profiles {
     L"MaxDefragDownShift=128\n"
     L"MaxDefragRelocations=256\n"
     L"MaxLightmapRadius=12500.0\n"
-    L"MaxTimeToGuaranteeMinMipCount=18\n"
+    L"MaxTimeToGuaranteeMinMipCount=10\n"
     L"MemoryLoss=0\n"
     L"MemoryMargin=192\n"
     L"MinEvictSize=64\n"
-    L"MinRequestedMipsToConsider=13\n"
-    L"MinTextureResidentMipCount=5\n"
-    L"MinTimeToGuaranteeMinMipCount=3\n"
+    L"MinRequestedMipsToConsider=14\n"
+    L"MinTextureResidentMipCount=7\n"
+    L"MinTimeToGuaranteeMinMipCount=2\n"
     L"PoolSize=4096\n"
-    L"ReflectionTexturePoolSize=196\n"
+    L"ReflectionTexturePoolSize=96\n"
     L"ShadowmapStreamingFactor=0.05\n"
-    L"StopIncreasingLimit=10\n"
-    L"StopStreamingLimit=6\n"
+    L"StopIncreasingLimit=12\n"
+    L"StopStreamingLimit=8\n"
     L"TemporalAAMemoryReserve=4.0\n"
     L"TextureFileCacheBulkDataAlignment=1\n"
     L"UseDynamicStreaming=True\n"
@@ -290,50 +292,50 @@ struct texture_profiles {
 #else
     // 7/13/2015 -- Changed a few texture groups that might be causing issues on AMD hardware
     L"[SystemSettings]\n"
-    L"TEXTUREGROUP_Bokeh=(MinLODSize=128,MaxLODSize=512,LODBias=1,MinMagFilter=Aniso,MipFilter=Linear)\n"
-    L"TEXTUREGROUP_Character=(MinLODSize=64,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_CharacterHigh=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_CharacterLow=(MinLODSize=64,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_CharacterNormalMap=(MinLODSize=64,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_CharacterSpecPower=(MinLODSize=64,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_CharacterSpecular=(MinLODSize=64,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_Cinematic=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_Effects=(MinLODSize=1,MaxLODSize=1024,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_EffectsNotFiltered=(MinLODSize=1,MaxLODSize=2048,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_ImageBasedReflection=(MinLODSize=64,MaxLODSize=128,LODBias=1,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Blur10)\n"
+    L"TEXTUREGROUP_Bokeh=(MinLODSize=128,MaxLODSize=512,LODBias=1,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
+    L"TEXTUREGROUP_Character=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_CharacterHigh=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_CharacterLow=(MinLODSize=128,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_CharacterNormalMap=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_CharacterSpecPower=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_CharacterSpecular=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_Cinematic=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_Effects=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
+    L"TEXTUREGROUP_EffectsNotFiltered=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
+    L"TEXTUREGROUP_ImageBasedReflection=(MinLODSize=128,MaxLODSize=128,LODBias=1,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
     //L"TEXTUREGROUP_ImageBasedReflection=(MinLODSize=256,MaxLODSize=4096,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Blur5)\n"
-    L"TEXTUREGROUP_InteriorNormalMap_High=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_InteriorSpec_High=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_Interior_High=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_LOD1_Emissive=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_LOD1_Opacity_Mask=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_LOD1_RRM_Mask=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_LightAndShadowMap=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_Lightmap=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_InteriorNormalMap_High=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_InteriorSpec_High=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_Interior_High=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_LOD1_Emissive=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
+    L"TEXTUREGROUP_LOD1_Opacity_Mask=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
+    L"TEXTUREGROUP_LOD1_RRM_Mask=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
+    L"TEXTUREGROUP_LightAndShadowMap=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
+    L"TEXTUREGROUP_Lightmap=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
     L"TEXTUREGROUP_MobileFlattened=(MinLODSize=1,MaxLODSize=4096,LODBias=0,MinMagFilter=aniso,MipFilter=point)\n"
-    L"TEXTUREGROUP_ProcBuilding_Face=(MinLODSize=256,MaxLODSize=4096,LODBias=0,MinMagFilter=aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_ProcBuilding_LightMap=(MinLODSize=128,MaxLODSize=4096,LODBias=-1,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_RenderTarget=(MinLODSize=1,MaxLODSize=2048,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_Shadowmap=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_Skybox=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_Terrain_Heightmap=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Point,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_Terrain_Weightmap=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Point,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_UI=(MinLODSize=512,MaxLODSize=4096,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_Vehicle=(MinLODSize=64,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_VehicleNormalMap=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_VehicleSpecular=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_Vehicle_High=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_Vehicle_Low=(MinLODSize=64,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_Weapon=(MinLODSize=64,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_WeaponNormalMap=(MinLODSize=64,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_WeaponSpecular=(MinLODSize=64,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_World=(MinLODSize=64,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0,NumStreamedMips=3)\n"
-    L"TEXTUREGROUP_WorldNormalMap=(MinLODSize=64,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0,NumStreamedMips=3)\n"
-    L"TEXTUREGROUP_WorldNormalMap_Hi=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_WorldSpecular=(MinLODSize=64,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0,NumStreamedMips=3)\n"
-    L"TEXTUREGROUP_WorldSpecular_Hi=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_World_Hi=(MinLODSize=64,MaxLODSize=2048,LODBias=0,MinMagFilter=aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
-    L"TEXTUREGROUP_World_Low=(MinLODSize=64,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen0)\n"
+    L"TEXTUREGROUP_ProcBuilding_Face=(MinLODSize=256,MaxLODSize=4096,LODBias=0,MinMagFilter=aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen5)\n"
+    L"TEXTUREGROUP_ProcBuilding_LightMap=(MinLODSize=128,MaxLODSize=4096,LODBias=-1,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
+    L"TEXTUREGROUP_RenderTarget=(MinLODSize=1,MaxLODSize=2048,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
+    L"TEXTUREGROUP_Shadowmap=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)\n"
+    L"TEXTUREGROUP_Skybox=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_Terrain_Heightmap=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Aniso,MipFilter=Point,MipGenSettings=TMGS_SimpleAverage)\n"
+    L"TEXTUREGROUP_Terrain_Weightmap=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Aniso,MipFilter=Point,MipGenSettings=TMGS_SimpleAverage)\n"
+    L"TEXTUREGROUP_UI=(MinLODSize=512,MaxLODSize=4096,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_Vehicle=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_VehicleNormalMap=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_VehicleSpecular=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_Vehicle_High=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_Vehicle_Low=(MinLODSize=128,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_Weapon=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_WeaponNormalMap=(MinLODSize=128,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_WeaponSpecular=(MinLODSize=128,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_World=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_WorldNormalMap=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_WorldNormalMap_Hi=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_WorldSpecular=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_WorldSpecular_Hi=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_World_Hi=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
+    L"TEXTUREGROUP_World_Low=(MinLODSize=128,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)\n"
 #endif
   };
 } texgroups;
@@ -367,6 +369,21 @@ struct mip_fadeout_profiles {
 } fadeout;
 
 
+// Add a few fields to the INI files that only pertain to this
+//   program.
+struct bmt_signatures {
+  const wchar_t* engine = {
+    L"[BMT.User]\n"
+    L"TweakedBy=" BMT_VERSION_STR L"\n"
+  };
+
+  const wchar_t* settings = {
+    L"[BMT.User]\n"
+    L"TweakedBy=" BMT_VERSION_STR L"\n"
+  };
+} signatures;
+
+
 void tune_physx_memory (HWND hDlg, size_t& heap, size_t& mesh_cache)
 {
   DXGI_ADAPTER_DESC* nv_adapters = NVAPI::EnumGPUs_DXGI ();
@@ -375,7 +392,7 @@ void tune_physx_memory (HWND hDlg, size_t& heap, size_t& mesh_cache)
     int cur_sel = ComboBox_GetCurSel (GetDlgItem (hDlg, IDC_PHYSX_GPU));
 
     if (cur_sel > 0) {
-      heap = nv_adapters [cur_sel].DedicatedVideoMemory / 1024 / 1024;
+      heap = 0.25 * nv_adapters [cur_sel].DedicatedVideoMemory / 1024 / 1024;
     }
     else {
       heap = min (nv_adapters [cur_sel].DedicatedVideoMemory / 1024 / 1024, 128);
@@ -723,6 +740,8 @@ void setup_framerate_limiting (HWND hDlg)
 {
   HWND hWndFrameRateLimiting = GetDlgItem (hDlg, IDC_FRAME_RATE_LIMITING);
 
+  EnableWindow (hWndFrameRateLimiting, FALSE);
+
   ComboBox_ResetContent (hWndFrameRateLimiting);
   ComboBox_InsertString (hWndFrameRateLimiting, 0, L"0   (All Bits Off)");  // 00000000
   ComboBox_InsertString (hWndFrameRateLimiting, 1, L"7   (Default)");       // 00000111
@@ -831,6 +850,8 @@ float get_max_delta_time (HWND hDlg)
 void setup_visibility_frames (HWND hDlg)
 {
   HWND hWndVisibility = GetDlgItem (hDlg, IDC_VISIBILITY);
+
+  EnableWindow (hWndVisibility, FALSE);
 
   ComboBox_ResetContent (hWndVisibility);
   ComboBox_InsertString (hWndVisibility, 0, L"* Disable");
@@ -961,7 +982,7 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       Button_GetIdealSize (GetDlgItem (hDlg, IDCANCEL), &size);
       SetWindowPos (GetDlgItem (hDlg, IDCANCEL), NULL, 0, 0, size.cx + 6, size.cy, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 
-      SetWindowText (hDlg, L"Batman Tweak v 0.43 (Beta)");
+      SetWindowText (hDlg, L"Batman Tweak v " BMT_VERSION_STR L" (Beta)");
 
       hWndApp = hDlg;
 
@@ -1399,17 +1420,17 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
       if (LOWORD (wParam) == IDC_LOW_PHYSX)
       {
-        physx_level->set_value (7);
+        physx_level->set_value (1);
       }
 
       if (LOWORD (wParam) == IDC_HIGH_PHYSX)
       {
-        physx_level->set_value (31);
+        physx_level->set_value (3);
       }
 
       if (LOWORD (wParam) == IDC_ULTRA_PHYSX)
       {
-        physx_level->set_value (255);
+        physx_level->set_value (7);
       }
 
       if (LOWORD (wParam) == IDC_PHYSX_MEMTUNE)
@@ -1484,13 +1505,15 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         shadow_scale->set_value (get_shadow_scale (hDlg));
         shadow_scale->store     ();
 
-        framerate_limiting->set_value (get_framerate_limiting (hDlg));
+        //framerate_limiting->set_value (get_framerate_limiting (hDlg));
+        framerate_limiting->set_value (7);
         framerate_limiting->store     ();
 
         max_delta_time->set_value (get_max_delta_time (hDlg));
         max_delta_time->store     ();
 
-        visibility_frames->set_value (get_visibility_frames (hDlg));
+        framerate_limiting->set_value (8);
+        //visibility_frames->set_value (get_visibility_frames (hDlg));
         visibility_frames->store     ();
 
         //
@@ -1523,6 +1546,9 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         }
 
         SaveXML ();
+
+        settings.import (signatures.settings);
+        engine.import   (signatures.engine);
 
         settings.save (install_path);
         engine.save   (install_path);

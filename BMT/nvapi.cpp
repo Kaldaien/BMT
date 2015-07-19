@@ -698,7 +698,7 @@ void SaveDriverTweaksNV (HWND hDlg)
     NVAPI_CALL      (DRS_SetSetting (hSession, hProfile, &vsync->adaptive));
 
     NVDRS_SETTING lodbias_auto_adjust;
-    NVAPI_SET_DWORD (lodbias_auto_adjust, AUTO_LODBIASADJUST_ID, 1);
+    NVAPI_SET_DWORD (lodbias_auto_adjust, AUTO_LODBIASADJUST_ID, 0);
     NVAPI_CALL      (DRS_SetSetting (hSession, hProfile, &lodbias_auto_adjust));
 
     NVAPI_SET_DWORD (lodbias->adjust, LODBIASADJUST_ID, lodbias->poll_adjust ());
@@ -718,7 +718,7 @@ void SaveDriverTweaksNV (HWND hDlg)
 }
 
 std::wstring
-NVAPI::GetDriverVersion (void)
+NVAPI::GetDriverVersion (NvU32* pVer)
 {
   NvU32             ver;
   NvAPI_ShortString ver_str;       // ANSI
@@ -726,7 +726,14 @@ NVAPI::GetDriverVersion (void)
 
   NvAPI_SYS_GetDriverAndBranchVersion (&ver, ver_str);
 
-  MultiByteToWideChar (CP_OEMCP, 0, ver_str, -1, ver_wstr, 64);
+  // The driver-branch string's not particularly user frieldy,
+  //   let's do this the right way and report a number the end-user
+  //     is actually going to recognize...
+  swprintf (ver_wstr, 64, L"%u.%u", ver / 100, ver % 100);
+  //MultiByteToWideChar (CP_OEMCP, 0, ver_str, -1, ver_wstr, 64);
+
+  if (pVer != NULL)
+    *pVer = ver;
 
   return ver_wstr;
 }
@@ -784,16 +791,36 @@ NVAPI::InitializeLibrary (void)
   }
   NVAPI_VERBOSE ()
 
-  if (ret != NVAPI_OK) {
-    nv_hardware = false;
-    bLibInit    = TRUE + 1; // Oooh, look - a mysterious tri-bool!
-    return FALSE;
-  }
+    if (ret != NVAPI_OK) {
+      nv_hardware = false;
+      bLibInit    = TRUE + 1; // Clearly this isn't a boolean, it just looks like one
+      return FALSE;
+    }
 
   sli     = new nvcfg_SLI           ();
   vsync   = new nvcfg_VSYNC         ();
   lodbias = new nvcfg_LODBias       ();
   misc    = new nvcfg_Miscellaneous ();
 
+  if (! CheckDriverVersion ()) {
+    BMT_MessageBox (L"WARNING:  Your display drivers are too old to play this game!\n",
+                    L"Please update your display drivers (Minimum Version = 353.30)",
+                    MB_OK | MB_ICONEXCLAMATION);
+  }
+
   return (bLibInit = TRUE);
+}
+
+bool
+NVAPI::CheckDriverVersion (void)
+{
+  NvU32 ver;
+  GetDriverVersion (&ver);
+
+  return ver >= 35330;
+  if (ver < 35330) {
+    return false;
+  }
+
+  return true;
 }
