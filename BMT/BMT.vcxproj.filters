@@ -45,6 +45,9 @@
     <ClInclude Include="dxgi.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="wmi.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BMT.cpp">
@@ -69,6 +72,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="dxgi.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="wmi.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

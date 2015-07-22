@@ -1,3 +1,20 @@
+/**
+* This file is part of Batman Tweak.
+*
+* Batman Tweak is free software : you can redistribute it and / or modify
+* it under the terms of the GNU General Public License as published by
+* The Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* Batman Tweak is distributed in the hope that it will be useful,
+* But WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with Batman Tweak.If not, see <http://www.gnu.org/licenses/>.
+**/
+
 #ifndef __BMT__PARAMETER_H__
 #define __BMT__PARAMETER_H__
 
@@ -103,6 +120,12 @@ public:
       if (section.contains_key (ini_key)) {
         section.get_value (ini_key) = backing_string;
         ret = true;
+      }
+
+      // Add this key/value if it doesn't already exist.
+      else {
+        section.add_key_value (ini_key, backing_string);
+        ret = true;// +1;
       }
     }
 
@@ -211,57 +234,57 @@ public:
 protected:
 private:
   std::vector <iParameter *> params;
-} static g_ParameterFactory;
+} extern g_ParameterFactory;
 
 }
 
 
-static bmt::ParameterInt*  refresh_rate;
-static bmt::ParameterInt* res_x;
-static bmt::ParameterInt* res_y;
-static bmt::ParameterInt* max_fps;
+extern bmt::ParameterInt*  refresh_rate;
+extern bmt::ParameterInt* res_x;
+extern bmt::ParameterInt* res_y;
+extern bmt::ParameterInt* max_fps;
 
-static bmt::ParameterBool* use_vsync;
-static bmt::ParameterBool* smooth_framerate;
+extern bmt::ParameterBool* use_vsync;
+extern bmt::ParameterBool* smooth_framerate;
 
-static bmt::ParameterInt*  smoothed_min;
-static bmt::ParameterInt*  smoothed_max;
+extern bmt::ParameterInt*  smoothed_min;
+extern bmt::ParameterInt*  smoothed_max;
 
 
-static bmt::ParameterBool*  hardware_physx;
-static bmt::ParameterInt*   physx_level;
-static bmt::ParameterInt64* physx_heap_size;
-static bmt::ParameterInt64* physx_mesh_cache;
+extern bmt::ParameterBool*  hardware_physx;
+extern bmt::ParameterInt*   physx_level;
+extern bmt::ParameterInt64* physx_heap_size;
+extern bmt::ParameterInt64* physx_mesh_cache;
 
-static bmt::ParameterInt*  blur_samples;
+extern bmt::ParameterInt*  blur_samples;
 
-static bmt::ParameterInt*  anisotropy;
-static bmt::ParameterInt*  texture_res;
+extern bmt::ParameterInt*  anisotropy;
+extern bmt::ParameterInt*  texture_res;
 
-static bmt::ParameterBool* enable_dx10;
-static bmt::ParameterBool* enable_dx11;
-static bmt::ParameterBool* enable_crossfire;
+extern bmt::ParameterBool* enable_dx10;
+extern bmt::ParameterBool* enable_dx11;
+extern bmt::ParameterBool* enable_crossfire;
 
-static bmt::ParameterInt*  level_of_detail;
-static bmt::ParameterInt*  level_of_detail2; // Temp hack, need a way to store parameters in multiple INI keys
-static bmt::ParameterInt*  shadow_quality;
-static bmt::ParameterInt*  antialiasing;
+extern bmt::ParameterInt*  level_of_detail;
+extern bmt::ParameterInt*  level_of_detail2; // Temp hack, need a way to store parameters in multiple INI keys
+extern bmt::ParameterInt*  shadow_quality;
+extern bmt::ParameterInt*  antialiasing;
 
-static bmt::ParameterBool*  interactive_debris;
-static bmt::ParameterBool*  interactive_smoke;
-static bmt::ParameterBool*  enhanced_rain;
-static bmt::ParameterBool*  enhanced_lightshafts;
+extern bmt::ParameterBool*  interactive_debris;
+extern bmt::ParameterBool*  interactive_smoke;
+extern bmt::ParameterBool*  enhanced_rain;
+extern bmt::ParameterBool*  enhanced_lightshafts;
 
-static bmt::ParameterFloat* mip_fadein0;
-static bmt::ParameterFloat* mip_fadein1;
+extern bmt::ParameterFloat* mip_fadein0;
+extern bmt::ParameterFloat* mip_fadein1;
 
-static bmt::ParameterFloat* mip_fadeout0;
-static bmt::ParameterFloat* mip_fadeout1;
+extern bmt::ParameterFloat* mip_fadeout0;
+extern bmt::ParameterFloat* mip_fadeout1;
 
-static bmt::ParameterFloat* shadow_scale;
+extern bmt::ParameterFloat* shadow_scale;
 
-static bmt::ParameterInt*   framerate_limiting;
-static bmt::ParameterFloat* max_delta_time;
-static bmt::ParameterInt*   visibility_frames;
+extern bmt::ParameterInt*   framerate_limiting;
+extern bmt::ParameterFloat* max_delta_time;
+extern bmt::ParameterInt*   visibility_frames;
 
 #endif /* __BMT__PARAMETER_H__ */

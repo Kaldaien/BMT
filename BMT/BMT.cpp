@@ -1,6 +1,19 @@
-// BMT.cpp : Defines the entry point for the application.
-//
-
+/**
+* This file is part of Batman Tweak.
+*
+* Batman Tweak is free software : you can redistribute it and / or modify
+* it under the terms of the GNU General Public License as published by
+* The Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* Batman Tweak is distributed in the hope that it will be useful,
+* But WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with Batman Tweak.If not, see <http://www.gnu.org/licenses/>.
+**/
 #define _CRT_SECURE_NO_WARNINGS
 
 #include "stdafx.h"
@@ -12,6 +25,7 @@
 #include "utility.h"
 #include "nvapi.h"
 #include "dxgi.h"
+#include "wmi.h"
 
 #include <cstdio>
 
@@ -22,7 +36,7 @@
 
 using namespace bmt;
 
-#define BMT_VERSION_STR L"0.45"
+#define BMT_VERSION_STR L"0.47"
 
 INT_PTR CALLBACK  Config (HWND, UINT, WPARAM, LPARAM);
 
@@ -30,14 +44,19 @@ HWND  hWndApp;
 HICON bmt_icon;
 HICON nv_icon;
 
-int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
-                     _In_opt_ HINSTANCE hPrevInstance,
-                     _In_ LPTSTR    lpCmdLine,
-                     _In_ int       nCmdShow)
+BM_Engine         engine;
+BM_SystemSettings settings;
+
+int APIENTRY _tWinMain(_In_ HINSTANCE     hInstance,
+                       _In_opt_ HINSTANCE hPrevInstance,
+                       _In_ LPTSTR        lpCmdLine,
+                       _In_ int           nCmdShow)
 {
   UNREFERENCED_PARAMETER(hPrevInstance);
   UNREFERENCED_PARAMETER(lpCmdLine);
   UNREFERENCED_PARAMETER (nCmdShow);
+
+  WMI::Init ();
 
   bmt_icon = LoadIcon (hInstance, MAKEINTRESOURCE (IDI_BMT));
   nv_icon  = LoadIcon (hInstance, MAKEINTRESOURCE (IDI_NV));
@@ -953,6 +972,70 @@ BMT_OptimizeStreamingMemory (void)
 INT_PTR CALLBACK DriverConfigNV (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 
 
+
+// What a nasty kludge this is, fix this ASAP!!!!
+int mode = 0;
+
+void handle_window_radios (HWND hDlg, WORD ID)
+{
+  switch (ID) {
+    case IDC_BORDER_WINDOW:
+      mode = 0;
+      break;
+    case IDC_BORDERLESS_WINDOW:
+      if (mode == 1)
+        mode = 3;
+      else
+        mode = 1;
+      break;
+    case IDC_FULLSCREEN:
+      mode = 2;
+      break;
+  }
+
+  if (mode < 3) {
+    LONG style = GetWindowLong (GetDlgItem (hDlg, IDC_BORDERLESS_WINDOW), GWL_STYLE);
+         style = (style & ~BS_AUTO3STATE) | BS_AUTORADIOBUTTON;
+    SetWindowLong (GetDlgItem (hDlg, IDC_BORDERLESS_WINDOW), GWL_STYLE, style);
+  }
+
+  if (mode == 0) {
+    Button_SetCheck (GetDlgItem (hDlg, IDC_BORDER_WINDOW),     1);
+    Button_SetCheck (GetDlgItem (hDlg, IDC_BORDERLESS_WINDOW), 0);
+    Button_SetCheck (GetDlgItem (hDlg, IDC_FULLSCREEN),        0);
+  }
+  else if (mode == 2) {
+    Button_SetCheck (GetDlgItem (hDlg, IDC_BORDER_WINDOW),     0);
+    Button_SetCheck (GetDlgItem (hDlg, IDC_BORDERLESS_WINDOW), 0);
+    Button_SetCheck (GetDlgItem (hDlg, IDC_FULLSCREEN),        1);
+  }
+  else {
+    Button_SetCheck (GetDlgItem (hDlg, IDC_BORDER_WINDOW), 0);
+    Button_SetCheck (GetDlgItem (hDlg, IDC_FULLSCREEN),    0);
+
+    // Regular borderless
+    if (mode == 1) {
+      LONG style = GetWindowLong (GetDlgItem (hDlg, IDC_BORDERLESS_WINDOW), GWL_STYLE);
+           style = (style & ~BS_AUTO3STATE) | BS_AUTORADIOBUTTON;
+      SetWindowLong   (GetDlgItem (hDlg, IDC_BORDERLESS_WINDOW), GWL_STYLE, style);
+      Button_SetCheck (GetDlgItem (hDlg, IDC_BORDERLESS_WINDOW), 1);
+
+      // Ignore BMAK startup/shutdown, we're not chaning resolution
+      WMI::StopMonitoring ();
+    }
+    else {
+      LONG style = GetWindowLong (GetDlgItem (hDlg, IDC_BORDERLESS_WINDOW), GWL_STYLE);
+           style = (style & ~BS_AUTORADIOBUTTON) | BS_AUTO3STATE;
+      SetWindowLong   (GetDlgItem (hDlg, IDC_BORDERLESS_WINDOW), GWL_STYLE, style);
+      Button_SetCheck (GetDlgItem (hDlg, IDC_BORDERLESS_WINDOW), 2);
+
+      // Monitor BMAK startup/shutdown to change the desktop res...
+      WMI::StartMonitoring ();
+    }
+  }
+}
+
+
 using namespace bmt;
 using namespace bmt::UI;
 using namespace bmt::XML;
@@ -982,9 +1065,15 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       Button_GetIdealSize (GetDlgItem (hDlg, IDCANCEL), &size);
       SetWindowPos (GetDlgItem (hDlg, IDCANCEL), NULL, 0, 0, size.cx + 6, size.cy, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 
+      hIcon = LoadIcon (hShell32, MAKEINTRESOURCE (145));
+
+      SendMessage (GetDlgItem (hDlg, IDC_NUKE_CONFIG), BM_SETIMAGE, IMAGE_ICON, (LPARAM)hIcon);
+
       SetWindowText (hDlg, L"Batman Tweak v " BMT_VERSION_STR L" (Beta)");
 
       hWndApp = hDlg;
+
+      WMI::Install (); // Cleanup is automatic thanks to an `atexit` hack, consider changing this policy...
 
       NVAPI::InitializeLibrary ();
 
@@ -1336,19 +1425,23 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       int window_mode = _wtoi (display_mode_val->value ());
 
       if (window_mode == 0) {
-        Button_SetCheck (GetDlgItem (hDlg, IDC_BORDER_WINDOW),     true);
-        Button_SetCheck (GetDlgItem (hDlg, IDC_BORDERLESS_WINDOW), false);
-        Button_SetCheck (GetDlgItem (hDlg, IDC_FULLSCREEN),        false);
+        mode = 0;
+        handle_window_radios (hDlg, IDC_BORDER_WINDOW);
       }
       else if (window_mode == 1) {
-        Button_SetCheck (GetDlgItem (hDlg, IDC_BORDER_WINDOW),     false);
-        Button_SetCheck (GetDlgItem (hDlg, IDC_BORDERLESS_WINDOW), true);
-        Button_SetCheck (GetDlgItem (hDlg, IDC_FULLSCREEN),        false);
+        // We have two borderless modes, one standard and this special one (change desktop res at launch)
+        if (settings.lookup_value (L"SystemSettings", L"WindowDisplayMode") == L"3") {
+          mode = 1;
+          handle_window_radios (hDlg, IDC_BORDERLESS_WINDOW);
+        }
+        else {
+          mode = 3;
+          handle_window_radios (hDlg, IDC_BORDERLESS_WINDOW);
+        }
       }
       else {
-        Button_SetCheck (GetDlgItem (hDlg, IDC_BORDER_WINDOW),     false);
-        Button_SetCheck (GetDlgItem (hDlg, IDC_BORDERLESS_WINDOW), false);
-        Button_SetCheck (GetDlgItem (hDlg, IDC_FULLSCREEN),        true);
+        mode = 2;
+        handle_window_radios (hDlg, IDC_FULLSCREEN);
       }
 
       //extern INT_PTR CALLBACK ImportExport (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
@@ -1357,8 +1450,29 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       return (INT_PTR)TRUE;
     }
 
+    case WM_LBUTTONDBLCLK:
+    {
+      static bool debug = false;
+      debug = !debug;
+
+      ShowWindow (GetDlgItem (hDlg, IDC_GPUINFO),          (! debug));
+      ShowWindow (GetDlgItem (hDlg, IDC_GPU_GROUP),        (! debug));
+      if (NVAPI::CountPhysicalGPUs () > 0) {
+        // Show/hide the NVIDIA driver tweaks button if applicable
+
+        ShowWindow (GetDlgItem (hDlg, IDC_NV_DRIVER_TWEAKS), (!debug));
+      }
+      ShowWindow (GetDlgItem (hDlg, IDC_DEBUG_GROUP),         debug);
+      ShowWindow (GetDlgItem (hDlg, IDC_NUKE_CONFIG),         debug);
+    } break;
+
     case WM_COMMAND:
     {
+      if (LOWORD (wParam) == IDC_BORDERLESS_WINDOW || 
+          LOWORD (wParam) == IDC_BORDER_WINDOW     ||
+          LOWORD (wParam) == IDC_FULLSCREEN) {
+        handle_window_radios (hDlg, LOWORD (wParam));
+      }
       if (LOWORD (wParam) == IDC_MATCH_DESKTOP) {
         DEVMODE dmNow;
 
@@ -1442,6 +1556,18 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
         physx_heap_size->set_value  (heap);
         physx_mesh_cache->set_value (cache);
+      }
+
+      if (LOWORD (wParam) == IDC_NUKE_CONFIG)
+      {
+        if (MessageBox (NULL, L"WARNING: This will delete all game settings and restore you to default settings the next time you run the game.\n\n"
+                              L"\tDo you really wish to continue?",
+                              L"Please Confirm An Irreversable Operation",
+                              MB_OKCANCEL | MB_ICONEXCLAMATION) == IDOK) {
+          BMT_DeleteAllConfigFiles ();
+          EndDialog (hDlg, LOWORD (wParam));
+          return (INT_PTR)TRUE;
+        }
       }
 
       if (LOWORD (wParam) == IDCANCEL)
@@ -1533,10 +1659,17 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
           settings.set_value (L"SystemSettings", L"WindowDisplayMode", L"0");
         }
 
-        if (Button_GetCheck (GetDlgItem (hDlg, IDC_BORDERLESS_WINDOW))) {
+        if (Button_GetCheck (GetDlgItem (hDlg, IDC_BORDERLESS_WINDOW)) == 1) {
           window_mode = 1;
           display_mode_val->value (L"1");
           settings.set_value (L"SystemSettings", L"WindowDisplayMode", L"1");
+        }
+
+        // We created a custom 4th mode, in which BMT changes the desktop resolution...
+        if (Button_GetCheck (GetDlgItem (hDlg, IDC_BORDERLESS_WINDOW)) == 2) {
+          window_mode = 1;
+          display_mode_val->value (L"1");
+          settings.set_value (L"SystemSettings", L"WindowDisplayMode", L"3");
         }
 
         if (Button_GetCheck (GetDlgItem (hDlg, IDC_FULLSCREEN))) {

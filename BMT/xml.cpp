@@ -1,3 +1,20 @@
+/**
+* This file is part of Batman Tweak.
+*
+* Batman Tweak is free software : you can redistribute it and / or modify
+* it under the terms of the GNU General Public License as published by
+* The Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* Batman Tweak is distributed in the hope that it will be useful,
+* But WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with Batman Tweak.If not, see <http://www.gnu.org/licenses/>.
+**/
+
 #include "xml.h"
 #include "utility.h"
 
@@ -61,7 +78,7 @@ bmt::XML::FindOption (xml_node<wchar_t>* parent_node, std::wstring name)
   return NULL;
 }
 
-//std::wstring bmt::XML::executable;
+std::wstring bmt::XML::executable;
 std::wstring bmt::XML::install_path;
 xml_document<wchar_t> bmt::XML::bmak_xml;
 
@@ -173,9 +190,9 @@ bmt::XML::LoadXML (void)
   xml_attribute <wchar_t>* exec_cmd_attrib =
     FindAttrib (FindNode (bmak_application, L"EXECCMD"), L"Value");
 
-  //if (exec_cmd_attrib != NULL && install_path_attrib != NULL) {
-    //executable = install_path_attrib->value () + std::wstring (exec_cmd_attrib->value ()) + std::wstring (L".exe");
-  //}
+  if (exec_cmd_attrib != NULL && install_path_attrib != NULL) {
+    executable = install_path_attrib->value () + std::wstring (exec_cmd_attrib->value ()) + std::wstring (L".exe");
+  }
 
   return true;
 }

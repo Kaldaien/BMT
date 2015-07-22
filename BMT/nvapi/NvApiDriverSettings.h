@@ -145,7 +145,7 @@ enum ESetting {
     OGL_QUALITY_ENHANCEMENTS_ID                   = 0x20797D6C,
     OGL_SINGLE_BACKDEPTH_BUFFER_ID                = 0x20A29055,
     OGL_THREAD_CONTROL_ID                         = 0x20C1221E,
-    OGL_TRIPLE_BUFFER_ID                          = 0x20FDD1F9,
+    OGL_TRIPLE_BUFFER_ID                          = 0x20FDD1F9,   
     OGL_VIDEO_EDITING_MODE_ID                     = 0x20EE02B4,
     AA_BEHAVIOR_FLAGS_ID                          = 0x10ECDB82,
     AA_MODE_ALPHATOCOVERAGE_ID                    = 0x10FC2D9C,

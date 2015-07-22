@@ -1,0 +1,217 @@
+[h1]Texture and Performance Tweaks (Manual)[/h1]
+
+So, you uncapped the framerate and probably noticed things got a little weird? Yeah, so did Iron Galaxy and that's why they limited the PC version to 30 FPS (crazy bunch of cooks if you ask me).
+
+The fundamental problem is actually the sheer volume of texture data in this game, and the game's design decision to "never show loading screens." Slower hard drives such as those found in consoles or many PCs will feed the engine texture data at a reasonably managable rate, but new fangled SSDs can overwhelm the engine with textures and cause hitching and crashing if something's not slowed down.
+
+The solution that was rushed out the door, was rather brash, and it limits the frame rate to 30 FPS. This works most of the time, but texture loading can still beat the hell out of the game engine once you hop into the batmobile and start driving around at high speed.
+
+---
+
+I've spent a good 10+ hours debugging the problem with my limited toolset and I believe I have a solution that's altogether better than the 30 FPS cap. Shockingly, the actual developers of this game, with their full blown toolset should have arrived at this same solution if not something altogether better, but I guess their priorities were elsewhere. A lot of people have had their hands on the PC version of this game, from several parties at NVIDIA who integrated the GameWorks stuff, to Rocksteady and of course Iron Galaxy. It boggles the mind that not one of them ever considered capping the framerate to 30 FPS a strange thing to do in a AAA game that's bundled with NVIDIA's flagship GPUs as a selling point!
+
+We've established that the problem is too much texture data... that's not an uncommon problem in modern games. The real kicker here is what happens when VRAM fills up and the engine's supposed to prioritize which textures to remove from VRAM and needs to do so very quickly because you're zipping through the city at 50 mph. The default engine configuration is not doing this adequately, in most cases you will get hitching while it takes multiple frames to sort out VRAM full issues, in the worst case you'll flat out crash (and _this_ is what prompted the 30 FPS cap, not so much the hitching). The takeway here is that to make this game as smooth as possible, you want as much RAM and VRAM as possible. Consoles are better built to handle a game that works the way this one does since VRAM is not separate from system RAM, but on the PC you're going to need a lot more RAM on both sides of the equation (CPU and GPU) to avoid the wrath of texture memory swapping.
+
+---
+
+[strike]My solution to frequent hitching is to keep fewer mipmap levels resident, evict smaller chunks of memory more frequently, commit smaller batches of texture updates per-frame and keep a longer hystersis to reduce heavy load/unload patterns.[/strike]
+
+Stability and hitching issues were being caused by improper settings to [b]MinTextureResidentMipCount[/b] and [b]MemoryMargin[/b]. I have corrected those values and made some major tweaks to improve shadow and lightmap quality as well as loading higher resolution textures quicker:
+
+[b]BmEngine.ini:[/b]
+[code]
+[TextureStreaming]
+MinTextureResidentMipCount=7
+PoolSize=4096
+MemoryMargin=192
+MemoryLoss=0
+HysteresisLimit=11
+DropMipLevelsLimit=16
+StopIncreasingLimit=12
+StopStreamingLimit=8
+MinEvictSize=10
+MinFudgeFactor=1
+FudgeFactorIncreaseRateOfChange=0.5
+FudgeFactorDecreaseRateOfChange=-0.4
+MinRequestedMipsToConsider=11
+MinTimeToGuaranteeMinMipCount=2
+MaxTimeToGuaranteeMinMipCount=5
+UseTextureFileCache=False
+LoadMapTimeLimit=5.0
+LightmapStreamingFactor=0.1
+ShadowmapStreamingFactor=0.3
+MaxLightmapRadius=2000.0
+AllowStreamingLightmaps=False
+TextureFileCacheBulkDataAlignment=1
+UsePriorityStreaming=True
+bAllowSwitchingStreamingSystem=False
+UseDynamicStreaming=True
+bEnableAsyncDefrag=True
+bEnableAsyncReallocation=True
+MaxDefragRelocations=256
+MaxDefragDownShift=128
+BoostPlayerTextures=6.0
+TemporalAAMemoryReserve=4.0
+ReflectionTexturePoolSize=96
+[/code]
+
+[i]Incidentally, the game appears to have a built-in countermeasure that will throttle texture loads rather stupidly if the game crashes enough times. It alters the engine settings to compute mipmaps rather than load them from disk, which slows down texture loads on slower processors but has questionable effectiveness on higher-end CPUs. This solution drives me nuts, and you're going to want to set your BmSystemSettings.ini to read-only after you setup graphics options you like in order to prevent it from happening (because it will bring texture load performance to a grinding halt on slower CPUs).[/i]
+
+This solution will create a lot of constant I/O load, so you probably don't want to try this on a non-SSD. (I've yet to test these tweaks on a mechanical hard drive.)
+
+-----
+
+With the hitching issue out of the way, I'd like to address another issue I've seen a lot of people discussing - triple buffering and pre-rendered frames.
+
+These things sound nice on paper, and will smooth out framerate variability at the cost of input latency. During most gameplay added input latency's not a problem (combat is largely rythm based and you just need to intuitively feel the flow of action), but the Batmobile and swinging around with the batclaw can be miserable experiences if you use triple buffering and pre-rendered frames. Triple buffering in Direct3D works differently than other places, it's basically a 3 frame render queue - all 3 frames have to be rendered and then all 3 frames have to be presented (when VSYNC is on, this means you add an extra frame of latency before any update shows up on screen). OpenGL doesn't actually define triple buffering and when you force it on in the driver, some drivers do something altogether smarter where they drop that 3rd frame when it makes sense to do so. I don't trust triple buffering in any API though, there's not enough control over how it works at the application level, and I strongly suggest you avoid it in this game.
+
+There's a little known solution that will get you the benefits of both of these things with a lot less added input latency. Without discussing how Window Vista+'s desktop window manager works in depth, let me just say that its effective behavior in windowed mode is to drop early/late frames to eliminate tearing without triple buffered VSYNC.
+
+It's worth mentioning that if you don't enable VSYNC in windowed mode you'll avoid tearing but you'll be allowed to render at an unlimited framerate and that will really screw up smooth motion perception on most display devices as framerate starts to fluctuate especially for the brief periods where you're drawing above your refresh rate and those frames are inevitably dropped. That's why the Unreal Engine has options to artificially cap and smooth framerate, and this is when you want those things.
+
+[b]BmSystemSettings.ini:[/b]
+
+[code]
+[SystemSettings]
+...
+OneFrameThreadLag=True
+UseVsync=False
+MaxFPS=60
+UpscaleScreenPercentage=True
+Fullscreen=False
+...
+ResX=<Your Desktop X Resolution>
+ResY=<Your Desktop Y Resolution>
+...
+WindowDisplayMode=1 ; Fullscreen borderless window
+[/code]
+
+[b]BmEngine.ini:[/b]
+
+[code]
+[Engine.Engine]
+...
+bSmoothFrameRate=TRUE
+MinSmoothedFrameRate=58
+MaxSmoothedFrameRate=62
+
+[Engine.Client]
+...
+; This is actually your refresh rate, set it to match your desktop's refresh rate and ignore what its name seems to imply
+MinDesiredFrameRate=60.0
+[/code]
+
+
+These are the NVIDIA driver settings I use to take best advantage of this:
+
+[code]
+Maximum pre-rendered frames: 1
+Power management mode: Prefer maximum performance
+SLI rendering mode: Single-GPU
+
+Threaded optimization: On
+Vertical Sync: OFF
+[/code]
+
+
+[i]By the way, if you have an SLI system don't use it (dedicate 1 GPU to PhysX instead). Even when both GPUs are rendering (current NV drivers have no support for 3 or 4-way SLI in this game), you get no tangible benefits from this, only increased frame latency.[/i]
+
+
+----
+
+
+Maximum anisotropy in this game defaults to 4x, which is practically free on most modern GPUs. There's a catch though, anisotropy is only applied to a handful of textures given the default settings in the engine configuration. To fix this, use the following TextureGroup settings.
+
+[b]BmSystemSettings.ini:[/b]
+
+[code]
+[SystemSettings]
+...
+MaxAnisotropy=16
+TEXTUREGROUP_World=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_WorldNormalMap=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_WorldSpecular=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_Character=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_CharacterNormalMap=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_CharacterSpecular=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_Weapon=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_WeaponNormalMap=(MinLODSize=128,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_WeaponSpecular=(MinLODSize=128,MaxLODSize=512,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_Vehicle=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_Vehicle_Low=(MinLODSize=128,MaxLODSize=512,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_Vehicle_High=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_VehicleNormalMap=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_VehicleSpecular=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_Cinematic=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_Effects=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_EffectsNotFiltered=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_Skybox=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_UI=(MinLODSize=512,MaxLODSize=4096,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_Lightmap=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)
+TEXTUREGROUP_Shadowmap=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,NumStreamedMips=3,MipGenSettings=TMGS_SimpleAverage)
+TEXTUREGROUP_RenderTarget=(MinLODSize=1,MaxLODSize=2048,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)
+TEXTUREGROUP_MobileFlattened=(MinLODSize=1,MaxLODSize=4096,LODBias=0,MinMagFilter=aniso,MipFilter=point)
+TEXTUREGROUP_ProcBuilding_Face=(MinLODSize=256,MaxLODSize=1024,LODBias=0,MinMagFilter=aniso,MipFilter=Linear,MipGenSettings=TMGS_Sharpen5)
+TEXTUREGROUP_ProcBuilding_LightMap=(MinLODSize=128,MaxLODSize=256,LODBias=-1,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)
+TEXTUREGROUP_Terrain_Heightmap=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Linear,MipFilter=Point,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_Terrain_Weightmap=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Linear,MipFilter=Point,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_ImageBasedReflection=(MinLODSize=256,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_Blur5)
+TEXTUREGROUP_Bokeh=(MinLODSize=128,MaxLODSize=512,LODBias=1,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)
+TEXTUREGROUP_LOD1_RRM_Mask=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)
+TEXTUREGROUP_LOD1_Opacity_Mask=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)
+TEXTUREGROUP_LOD1_Emissive=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)
+...
+TEXTUREGROUP_CharacterLow=(MinLODSize=128,MaxLODSize=512,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_CharacterHigh=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_CharacterSpecPower=(MinLODSize=128,MaxLODSize=1024,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_World_Low=(MinLODSize=128,MaxLODSize=512,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_World_Hi=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_WorldNormalMap_Hi=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_WorldSpecular_Hi=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_Interior_High=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_InteriorNormalMap_High=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_InteriorSpec_High=(MinLODSize=128,MaxLODSize=2048,LODBias=0,MinMagFilter=Aniso,MipFilter=Linear,MipGenSettings=TMGS_LeaveExistingMips)
+TEXTUREGROUP_LightAndShadowMap=(MinLODSize=128,MaxLODSize=4096,LODBias=0,MinMagFilter=Linear,MipFilter=Linear,MipGenSettings=TMGS_SimpleAverage)
+[/code]
+
+Now every texture where anisotropic filtering is appropriate will use it. There are certain types of textures (atlases and lightmaps) where anisotropic filtering (especially at levels > 4x) will cause things like light bleeding, so you don't want to liberally apply anisotropic filtering to every type of texture. That's why I left some of the textures setup to use bi/trilinear filtering.
+
+In addition to enabling anisotropic filtering across the board, this also disables sharpening on certain textures that I honestly think should never have been sharpened. For instance, the batmobile's normal maps were being sharpened and this made the interior look blocky and altogether like it was made of plastic in a lot of cinematic cutscenes. It's possible that was the art style they were going for, but I have my doubts.
+
+
+---
+
+
+Shadow map resolution scales with render resolution, and this makes rendering at resolutions > 1080p a hell of a lot more expensive than they ought to be. I suggest the following changes to get acceptable performance at max settings when running at 1440p or 2160p (4K UHD):
+
+[b]BmSystemSettings.ini:[/b]
+[code]
+ShadowTexelsPerPixel=0.250000 ; Match shadow map resolution to 1080p when rendering at 4K
+ShadowTexelsPerPixel=0.66666  ; Match shadow map resolution to 1080p when rendering at 1440p
+[/code]
+
+---
+
+
+To make the Batmobile more drivable, especially if you've enabled multiple pre-rendered frames in your driver:
+
+[code]
+[Engine.GameEngine]
+; Latency goes through the roof on occasion, and this keeps the batmobile from speeding up and slowing down during render lag spikes
+MaxDeltaTime=0.0832222
+
+[Engine.Engine]
+...
+; It's not clear exactly what this setting is (e.g. if it's a bitmask or integer), but it's tied to changes NVIDIA made when integrating their GameWorks stuff and seems to help Batmobile physics when the framerate's uncapped. _(This needs more testing)_
+FrameRateLimitingSetting=15
+[/code]
+
+----------
+
+EDIT 7: Vastly improved texture streaming, will produce more shadows and better lightmap coverage, and will load higher resolution textures much quicker.
+
+EDIT 8: Introducing Batman Tweak (BMT_x64.exe)
+
+EDIT 9: Removed disclaimer about read-only INI files... the tool in testing makes that obsolete.
+
+EDIT 10: Renamed thread

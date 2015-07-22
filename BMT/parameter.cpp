@@ -1,3 +1,20 @@
+/**
+* This file is part of Batman Tweak.
+*
+* Batman Tweak is free software : you can redistribute it and / or modify
+* it under the terms of the GNU General Public License as published by
+* The Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+*
+* Batman Tweak is distributed in the hope that it will be useful,
+* But WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with Batman Tweak.If not, see <http://www.gnu.org/licenses/>.
+**/
+
 #define _CRT_SECURE_NO_WARNINGS
 #define _CRT_NON_CONFORMING_SWPRINTFS
 
@@ -261,3 +278,57 @@ bmt::ParameterFactory::create_parameter <float> (const wchar_t* name)
 
   return param;
 }
+
+
+
+
+bmt::ParameterFactory bmt::g_ParameterFactory;
+
+
+bmt::ParameterInt*  refresh_rate;
+bmt::ParameterInt* res_x;
+bmt::ParameterInt* res_y;
+bmt::ParameterInt* max_fps;
+
+bmt::ParameterBool* use_vsync;
+bmt::ParameterBool* smooth_framerate;
+
+bmt::ParameterInt*  smoothed_min;
+bmt::ParameterInt*  smoothed_max;
+
+
+bmt::ParameterBool*  hardware_physx;
+bmt::ParameterInt*   physx_level;
+bmt::ParameterInt64* physx_heap_size;
+bmt::ParameterInt64* physx_mesh_cache;
+
+bmt::ParameterInt*  blur_samples;
+
+bmt::ParameterInt*  anisotropy;
+bmt::ParameterInt*  texture_res;
+
+bmt::ParameterBool* enable_dx10;
+bmt::ParameterBool* enable_dx11;
+bmt::ParameterBool* enable_crossfire;
+
+bmt::ParameterInt*  level_of_detail;
+bmt::ParameterInt*  level_of_detail2; // Temp hack, need a way to store parameters in multiple INI keys
+bmt::ParameterInt*  shadow_quality;
+bmt::ParameterInt*  antialiasing;
+
+bmt::ParameterBool*  interactive_debris;
+bmt::ParameterBool*  interactive_smoke;
+bmt::ParameterBool*  enhanced_rain;
+bmt::ParameterBool*  enhanced_lightshafts;
+
+bmt::ParameterFloat* mip_fadein0;
+bmt::ParameterFloat* mip_fadein1;
+
+bmt::ParameterFloat* mip_fadeout0;
+bmt::ParameterFloat* mip_fadeout1;
+
+bmt::ParameterFloat* shadow_scale;
+
+bmt::ParameterInt*   framerate_limiting;
+bmt::ParameterFloat* max_delta_time;
+bmt::ParameterInt*   visibility_frames;
