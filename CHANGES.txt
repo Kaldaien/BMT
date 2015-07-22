@@ -1,3 +1,31 @@
+v 0.47 (7/22/2015)
+-----
++ By popular demand, config file nuking has been implemented (restores the game to default)
+
+  >> To use this, double click any empty space within the window to toggle between GPU Info and Debug Utilities, then click the "Delete All Configuration Files" button and confirm that you really wish to do this.
+
+v 0.46 (7/21/2015)
+-----
++ INI parser can properly deal with missing INI key/value pairs at save-time
++ Added experimental borderless window fullscreen mode override
+
+ >>  Click the borderless window radio button until it turns into a check box and leave BMT.exe running while you launch BatmanAK.exe to use this feature
+
+v 0.45 (7/19/2015)
+-----
++ Disables a few options that could cause the game to go into a sort of sanity check mode
++ Adds a [BMT.User] TweakedBy=<Version> to BmEngine.ini and BmSystemSettings.ini for planned future features
+
+v 0.44 (7/18/2015)
+-----
+ + Added NVIDIA driver version validation / warning at startup
+ + Reports NVIDIA driver *version* now instead of release/branch
+ + Increased debug information level on file I/O error
+
+v 0.43 (7/16/2015)
+------
++ No longer requires MSVC 2015 Redistributables
+
 v 0.42
 ------
 + Set PoolSize for the slow profile back to 1024
