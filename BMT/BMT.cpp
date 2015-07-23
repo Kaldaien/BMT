@@ -36,11 +36,13 @@
 
 using namespace bmt;
 
-#define BMT_VERSION_STR L"0.48"
+#define BMT_VERSION_STR L"0.49"
 
 INT_PTR CALLBACK  Config (HWND, UINT, WPARAM, LPARAM);
 
 bool  messagebox_active; // Workaround some particularly strange behavior
+bool  first_load = true; // Some settings should only be loaded once; ignore when false
+
 HWND  hWndApp;
 HICON bmt_icon;
 HICON nv_icon;
@@ -423,6 +425,8 @@ void tune_physx_memory (HWND hDlg, size_t& heap, size_t& mesh_cache)
 }
 
 
+// This resizes a UI control, avoid calling it multiple times or it will continue
+//   to shrink each time!
 void setup_driver_tweaks (HWND hDlg)
 {
   // If there is an NV GPU installed, display a special button!
@@ -1036,6 +1040,43 @@ void handle_window_radios (HWND hDlg, WORD ID)
   }
 }
 
+void setup_debug_utils (HWND hDlg, bool debug)
+{
+  ShowWindow (GetDlgItem (hDlg, IDC_GPUINFO),          (! debug));
+  ShowWindow (GetDlgItem (hDlg, IDC_GPU_GROUP),        (! debug));
+  if (NVAPI::CountPhysicalGPUs () > 0) {
+    // Show/hide the NVIDIA driver tweaks button if applicable
+
+    ShowWindow (GetDlgItem (hDlg, IDC_NV_DRIVER_TWEAKS), (!debug));
+  }
+  ShowWindow (GetDlgItem (hDlg, IDC_DEBUG_GROUP),         debug);
+  ShowWindow (GetDlgItem (hDlg, IDC_NUKE_CONFIG),         debug);
+  ShowWindow (GetDlgItem (hDlg, IDC_BACKUP_CONFIG),       debug);
+  ShowWindow (GetDlgItem (hDlg, IDC_RESTORE_CONFIG),      debug);
+
+  if (debug) {
+    if (BMT_HasBackupConfigFiles ()) {
+      std::wstring backup_time = BMT_GetBackupFileTime ();
+      SetWindowText (GetDlgItem (hDlg, IDC_RESTORE_CONFIG), std::wstring (L" Restore Config Files\n " +
+                                                                            backup_time).c_str ());
+      EnableWindow (GetDlgItem (hDlg, IDC_RESTORE_CONFIG), TRUE);
+      //EnableWindow (GetDlgItem (hDlg, IDC_BACKUP_CONFIG), FALSE);
+      EnableWindow (GetDlgItem (hDlg, IDC_BACKUP_CONFIG),  TRUE);
+      std::wstring config_time = BMT_GetConfigFileTime ();
+      SetWindowText (GetDlgItem (hDlg, IDC_BACKUP_CONFIG), std::wstring (L" Backup Config Files\n " +
+                                                                         config_time).c_str ());
+    }
+    else {
+      std::wstring config_time = BMT_GetConfigFileTime ();
+      SetWindowText (GetDlgItem (hDlg, IDC_BACKUP_CONFIG), std::wstring (L" Backup Config Files\n " +
+                                                                         config_time).c_str ());
+      EnableWindow (GetDlgItem (hDlg, IDC_BACKUP_CONFIG),  TRUE);
+      EnableWindow (GetDlgItem (hDlg, IDC_RESTORE_CONFIG), FALSE);
+      SetWindowText (GetDlgItem (hDlg, IDC_RESTORE_CONFIG), L" Restore Config Files");
+    }
+  }
+}
+
 
 using namespace bmt;
 using namespace bmt::UI;
@@ -1049,20 +1090,20 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
   {
     case WM_INITDIALOG:
     {
-      SendMessage (hDlg, WM_SETICON, ICON_BIG,   (LPARAM)bmt_icon);
+      SendMessage (hDlg, WM_SETICON, ICON_BIG, (LPARAM)bmt_icon);
       SendMessage (hDlg, WM_SETICON, ICON_SMALL, (LPARAM)bmt_icon);
 
       HINSTANCE hShell32 = LoadLibrary (L"shell32.dll");
-      HICON     hIcon    = LoadIcon    (hShell32, MAKEINTRESOURCE (16761));
+      HICON     hIcon = LoadIcon (hShell32, MAKEINTRESOURCE (16761));
 
       SIZE size;
-      SendMessage         (GetDlgItem (hDlg, IDOK), BM_SETIMAGE, IMAGE_ICON, (LPARAM)hIcon);
+      SendMessage (GetDlgItem (hDlg, IDOK), BM_SETIMAGE, IMAGE_ICON, (LPARAM)hIcon);
       Button_GetIdealSize (GetDlgItem (hDlg, IDOK), &size);
       SetWindowPos (GetDlgItem (hDlg, IDOK), NULL, 0, 0, size.cx + 6, size.cy, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 
       hIcon = LoadIcon (hShell32, MAKEINTRESOURCE (200));
 
-      SendMessage         (GetDlgItem (hDlg, IDCANCEL), BM_SETIMAGE, IMAGE_ICON, (LPARAM)hIcon);
+      SendMessage (GetDlgItem (hDlg, IDCANCEL), BM_SETIMAGE, IMAGE_ICON, (LPARAM)hIcon);
       Button_GetIdealSize (GetDlgItem (hDlg, IDCANCEL), &size);
       SetWindowPos (GetDlgItem (hDlg, IDCANCEL), NULL, 0, 0, size.cx + 6, size.cy, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 
@@ -1076,11 +1117,15 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       hIcon = LoadIcon (hShell32, MAKEINTRESOURCE (16741));
       SendMessage (GetDlgItem (hDlg, IDC_RESTORE_CONFIG), BM_SETIMAGE, IMAGE_ICON, (LPARAM)hIcon);
 
+      FreeLibrary (hShell32);
+
       SetWindowText (hDlg, L"Batman Tweak v " BMT_VERSION_STR L" (Beta)");
 
       hWndApp = hDlg;
 
-      WMI::Install (); // Cleanup is automatic thanks to an `atexit` hack, consider changing this policy...
+      // Don't do this stuff multiple times, that'd be bad!
+      if (first_load)
+        WMI::Install (); // Cleanup is automatic thanks to an `atexit` hack, consider changing this policy...
 
       NVAPI::InitializeLibrary ();
 
@@ -1093,51 +1138,204 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       settings.load (install_path);
       engine.load   (install_path);
 
-      refresh_rate =
-        static_cast <ParameterInt *> (
-          g_ParameterFactory.create_parameter <int> (L"Refresh Rate")
-        );
+      // Setup the config variables on first load only
+      if (first_load) {
+        refresh_rate =
+          static_cast <ParameterInt *> (
+            g_ParameterFactory.create_parameter <int> (L"Refresh Rate")
+          );
+
+        res_x =
+          static_cast <ParameterInt *> (
+            g_ParameterFactory.create_parameter <int> (L"X Resolution")
+          );
+
+        res_y =
+          static_cast <ParameterInt *> (
+            g_ParameterFactory.create_parameter <int> (L"Y Resolution")
+          );
+
+        max_fps =
+          static_cast <ParameterInt *> (
+            g_ParameterFactory.create_parameter <int> (L"Maximum Framerate")
+          );
+
+        use_vsync =
+          static_cast <ParameterBool *> (
+            g_ParameterFactory.create_parameter <bool> (L"Use VSYNC")
+          );
+
+        smooth_framerate =
+          static_cast <ParameterBool *> (
+            g_ParameterFactory.create_parameter <bool> (L"Framerate Smoothing")
+          );
+
+        smoothed_min =
+          static_cast <ParameterInt *> (
+            g_ParameterFactory.create_parameter <int> (L"Minimum Smoothed Range")
+          );
+
+        smoothed_max =
+          static_cast <ParameterInt *> (
+            g_ParameterFactory.create_parameter <int> (L"Maximum Smoothed Range")
+          );
+
+        blur_samples =
+          static_cast <ParameterInt *> (
+            g_ParameterFactory.create_parameter <int> (L"Number of Blur Filter Samples")
+          );
+
+        // In some APIs this is a float, but let's just keep things simple (int).
+        anisotropy =
+          static_cast <ParameterInt *> (
+            g_ParameterFactory.create_parameter <int> (L"Maximum Anisotropic Filter")
+          );
+
+        texture_res =
+          static_cast <ParameterInt *> (
+            g_ParameterFactory.create_parameter <int> (L"Texture Resolution Level")
+          );
+
+        hardware_physx =
+          static_cast <ParameterBool *> (
+            g_ParameterFactory.create_parameter <bool> (L"Disable Hardware PhysX")
+          );
+
+        physx_level =
+          static_cast <ParameterInt *> (
+            g_ParameterFactory.create_parameter <int> (L"PhysX Level")
+          );
+
+        physx_heap_size =
+          static_cast <ParameterInt64 *> (
+            g_ParameterFactory.create_parameter <int64_t> (L"PhysX Heap Size (GPU)")
+          );
+
+        physx_mesh_cache =
+          static_cast <ParameterInt64 *> (
+            g_ParameterFactory.create_parameter <int64_t> (L"PhysX Mesh Cache (GPU)")
+          );
+
+        enable_dx10 =
+          static_cast <ParameterBool *> (
+            g_ParameterFactory.create_parameter <bool> (L"Enable DX10 Features")
+          );
+
+        // This is probably pure fantasy, but whatever... some people insist on having this.
+        enable_dx11 =
+          static_cast <ParameterBool *> (
+            g_ParameterFactory.create_parameter <bool> (L"Enable DX11 Features")
+          );
+
+        enable_crossfire =
+          static_cast <ParameterBool *> (
+            g_ParameterFactory.create_parameter <bool> (L"Enable CrossFire")
+          );
+
+        level_of_detail =
+          static_cast <ParameterInt *> (
+            g_ParameterFactory.create_parameter <int> (L"Level of Detail")
+          );
+
+        shadow_quality =
+          static_cast <ParameterInt *> (
+            g_ParameterFactory.create_parameter <int> (L"Shadow Quality")
+          );
+
+        antialiasing =
+          static_cast <ParameterInt *> (
+            g_ParameterFactory.create_parameter <int> (L"Antialiasing")
+          );
+
+        interactive_debris =
+          static_cast <ParameterBool *> (
+            g_ParameterFactory.create_parameter <bool> (L"Interactive Paper Debris")
+          );
+
+        interactive_smoke =
+          static_cast <ParameterBool *> (
+            g_ParameterFactory.create_parameter <bool> (L"Interactive Smoke")
+          );
+
+        enhanced_rain =
+          static_cast <ParameterBool *> (
+            g_ParameterFactory.create_parameter <bool> (L"Interactive Smoke")
+          );
+
+        enhanced_lightshafts =
+          static_cast <ParameterBool *> (
+            g_ParameterFactory.create_parameter <bool> (L"Volumetric Lighting (Enhanced Lightshafts)")
+          );
+
+        mip_fadein0 =
+          static_cast <ParameterFloat *> (
+            g_ParameterFactory.create_parameter <float> (L"Mipmap LOD0 FadeIn Rate")
+          );
+        mip_fadein1 =
+          static_cast <ParameterFloat *> (
+            g_ParameterFactory.create_parameter <float> (L"Mipmap LOD1 FadeIn Rate")
+          );
+
+        mip_fadeout0 =
+          static_cast <ParameterFloat *> (
+            g_ParameterFactory.create_parameter <float> (L"Mipmap LOD0 FadeOut Rate")
+          );
+        mip_fadeout1 =
+          static_cast <ParameterFloat *> (
+            g_ParameterFactory.create_parameter <float> (L"Mipmap LOD1 FadeOut Rate")
+          );
+
+        shadow_scale =
+          static_cast <ParameterFloat *> (
+            g_ParameterFactory.create_parameter <float> (L"Shadow Scale (Shadow Texels Per-Pixel)")
+          );
+
+        framerate_limiting =
+          static_cast <ParameterInt *> (
+            g_ParameterFactory.create_parameter <int> (L"Frame Rate Limiting Setting (not what it sounds like)")
+          );
+
+        max_delta_time =
+          static_cast <ParameterFloat *> (
+            g_ParameterFactory.create_parameter <float> (L"Maximum Delta Time")
+          );
+
+        visibility_frames =
+          static_cast <ParameterInt *> (
+            g_ParameterFactory.create_parameter <int> (L"Primitive Probably Visible Time")
+          );
+
+        // User-Defined Configuration -- NOT PART OF THE GAME
+        streaming_profile =
+          static_cast <ParameterInt *> (
+            g_ParameterFactory.create_parameter <int> (L"User-Selected Streaming Profile")
+          );
+
+        texgroup_profile =
+          static_cast <ParameterInt *> (
+            g_ParameterFactory.create_parameter <int> (L"User-Selected TexGroup Profile")
+          );
+      }
 
       refresh_rate->register_to_xml (FindNode (bmak_gamesettings, L"RESOLUTION"), L"RefreshRate");
       refresh_rate->register_to_ini (engine.get_file (), L"Engine.Client", L"MinDesiredFrameRate");
       refresh_rate->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_REFRESH_RATE)));
       refresh_rate->load ();
 
-      res_x =
-        static_cast <ParameterInt *> (
-          g_ParameterFactory.create_parameter <int> (L"X Resolution")
-        );
-
       res_x->register_to_xml (FindOption (bmak_gamesettings, L"ResolutionX"), L"Value");
       res_x->register_to_ini (settings.get_file (), L"SystemSettings", L"ResX");
       res_x->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_RES_X)));
       res_x->load ();
-
-      res_y =
-        static_cast <ParameterInt *> (
-          g_ParameterFactory.create_parameter <int> (L"Y Resolution")
-        );
 
       res_y->register_to_xml (FindOption (bmak_gamesettings, L"ResolutionY"), L"Value");
       res_y->register_to_ini (settings.get_file (), L"SystemSettings", L"ResY");
       res_y->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_RES_Y)));
       res_y->load ();
 
-
-      max_fps =
-        static_cast <ParameterInt *> (
-          g_ParameterFactory.create_parameter <int> (L"Maximum Framerate")
-        );
-
       max_fps->register_to_ini (settings.get_file (), L"SystemSettings", L"MaxFPS");
       max_fps->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_MAXFPS)));
       max_fps->load ();
 
-
-      use_vsync =
-        static_cast <ParameterBool *> (
-          g_ParameterFactory.create_parameter <bool> (L"Use VSYNC")
-        );
 
       use_vsync->register_to_xml (FindOption (bmak_gamesettings, L"Vsync"), L"Value");
       use_vsync->register_to_ini (settings.get_file (), L"SystemSettings", L"UseVsync");
@@ -1145,130 +1343,59 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       use_vsync->load ();
 
 
-      smooth_framerate =
-        static_cast <ParameterBool *> (
-          g_ParameterFactory.create_parameter <bool> (L"Framerate Smoothing")
-        );
-
       smooth_framerate->register_to_ini (engine.get_file (), L"Engine.Engine", L"bSmoothFrameRate");
       smooth_framerate->bind_to_control (new CheckBox (GetDlgItem (hDlg, IDC_FRAMERATE_SMOOTHING)));
       smooth_framerate->load ();
 
-      smoothed_min =
-        static_cast <ParameterInt *> (
-          g_ParameterFactory.create_parameter <int> (L"Minimum Smoothed Range")
-        );
-
       smoothed_min->register_to_ini (engine.get_file (), L"Engine.Engine", L"MinSmoothedFrameRate");
       smoothed_min->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_MIN_SMOOTHED)));
       smoothed_min->load ();
-
-      smoothed_max =
-        static_cast <ParameterInt *> (
-          g_ParameterFactory.create_parameter <int> (L"Maximum Smoothed Range")
-        );
 
       smoothed_max->register_to_ini (engine.get_file (), L"Engine.Engine", L"MaxSmoothedFrameRate");
       smoothed_max->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_MAX_SMOOTHED)));
       smoothed_max->load ();
 
 
-      blur_samples =
-        static_cast <ParameterInt *> (
-          g_ParameterFactory.create_parameter <int> (L"Number of Blur Filter Samples")
-        );
-
       blur_samples->register_to_ini (settings.get_file (), L"SystemSettings", L"MaxFilterBlurSampleCount");
       blur_samples->load ();
 
 
-      // In some APIs this is a float, but let's just keep things simple (int).
-      anisotropy =
-        static_cast <ParameterInt *> (
-          g_ParameterFactory.create_parameter <int> (L"Maximum Anisotropic Filter")
-        );
-
       anisotropy->register_to_ini (settings.get_file (), L"SystemSettings", L"MaxAnisotropy");
       anisotropy->load ();
-
-      texture_res =
-        static_cast <ParameterInt *> (
-          g_ParameterFactory.create_parameter <int> (L"Texture Resolution Level")
-        );
 
       texture_res->register_to_xml (FindOption (bmak_gamesettings, L"Texture_Resolution"), L"Value");
       texture_res->register_to_ini (settings.get_file (), L"SystemSettings", L"TextureResolution");
       texture_res->load ();
 
 
-      hardware_physx =
-        static_cast <ParameterBool *> (
-          g_ParameterFactory.create_parameter <bool> (L"Disable Hardware PhysX")
-      );
-
+      // A checkbox to _disable_ something's a little awkward - we have to rename this...
       Button_SetText (GetDlgItem (hDlg, IDC_HARDWARE_PHYSX), L"Disable Hardware PhysX");
       hardware_physx->register_to_ini (engine.get_file (), L"Engine.Engine", L"bDisablePhysXHardwareSupport");
       hardware_physx->bind_to_control (new CheckBox (GetDlgItem (hDlg, IDC_HARDWARE_PHYSX)));
       hardware_physx->load ();
 
-
-      physx_level =
-        static_cast <ParameterInt *> (
-          g_ParameterFactory.create_parameter <int> (L"PhysX Level")
-        );
-
       physx_level->register_to_ini (engine.get_file (), L"Engine.Engine", L"PhysXLevel");
       physx_level->load ();
 
-      physx_heap_size =
-        static_cast <ParameterInt64 *> (
-          g_ParameterFactory.create_parameter <int64_t> (L"PhysX Heap Size (GPU)")
-        );
-
-      physx_heap_size->register_to_ini  (engine.get_file (), L"Engine.Engine", L"PhysXGpuHeapSize");
+      physx_heap_size->register_to_ini (engine.get_file (), L"Engine.Engine", L"PhysXGpuHeapSize");
       physx_heap_size->load ();
-
-      physx_mesh_cache =
-        static_cast <ParameterInt64 *> (
-          g_ParameterFactory.create_parameter <int64_t> (L"PhysX Mesh Cache (GPU)")
-        );
 
       physx_mesh_cache->register_to_ini (engine.get_file (), L"Engine.Engine", L"PhysXMeshCacheSize");
       physx_mesh_cache->load ();
 
 
-      enable_dx10 =
-        static_cast <ParameterBool *> (
-          g_ParameterFactory.create_parameter <bool> (L"Enable DX10 Features")
-        );
-
       enable_dx10->register_to_ini (settings.get_file (), L"SystemSettings", L"AllowD3D10");
       enable_dx10->bind_to_control (new CheckBox (GetDlgItem (hDlg, IDC_DX10)));
       enable_dx10->load ();
-
-      enable_dx11 =
-        static_cast <ParameterBool *> (
-          g_ParameterFactory.create_parameter <bool> (L"Enable DX11 Features")
-        );
 
       enable_dx11->register_to_ini (settings.get_file (), L"SystemSettings", L"AllowD3D11");
       enable_dx11->bind_to_control (new CheckBox (GetDlgItem (hDlg, IDC_DX11)));
       enable_dx11->load ();
 
-      enable_crossfire =
-        static_cast <ParameterBool *> (
-          g_ParameterFactory.create_parameter <bool> (L"Enable CrossFire")
-        );
-
       enable_crossfire->register_to_ini (settings.get_file (), L"SystemSettings", L"bEnableCrossfire");
       enable_crossfire->bind_to_control (new CheckBox (GetDlgItem (hDlg, IDC_CROSSFIRE)));
       enable_crossfire->load ();
 
-
-      level_of_detail =
-        static_cast <ParameterInt *> (
-          g_ParameterFactory.create_parameter <int> (L"Level of Detail")
-        );
 
       level_of_detail->register_to_xml (FindOption (bmak_gamesettings, L"Level_Of_Detail"), L"Value");
       level_of_detail->register_to_ini (settings.get_file (), L"SystemSettings", L"LevelOfDetail");
@@ -1278,19 +1405,9 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       //level_of_detail2.register_to_ini (settings.get_file (), L"SystemSettings", L"DetailMode");
       //level_of_detail2.load ();
 
-      shadow_quality =
-        static_cast <ParameterInt *> (
-          g_ParameterFactory.create_parameter <int> (L"Shadow Quality")
-        );
-
       shadow_quality->register_to_xml (FindOption (bmak_gamesettings, L"Shadow_Quality"), L"Value");
       shadow_quality->register_to_ini (settings.get_file (), L"SystemSettings", L"ShadowQuality");
       shadow_quality->load ();
-
-      antialiasing =
-        static_cast <ParameterInt *> (
-          g_ParameterFactory.create_parameter <int> (L"Antialiasing")
-        );
 
       antialiasing->register_to_xml (FindOption (bmak_gamesettings, L"Anti-Aliasing"), L"Value");
       antialiasing->register_to_ini (settings.get_file (), L"SystemSettings", L"Antialiasing");
@@ -1298,40 +1415,20 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       antialiasing->load ();
 
 
-      interactive_debris =
-        static_cast <ParameterBool *> (
-          g_ParameterFactory.create_parameter <bool> (L"Interactive Paper Debris")
-        );
-
       interactive_debris->register_to_xml (FindOption (bmak_gamesettings, L"Interactive_Paper_Debris"), L"Value");
       interactive_debris->register_to_ini (settings.get_file (), L"SystemSettings", L"bEnableInteractivePaperDebris");
       interactive_debris->bind_to_control (new CheckBox (GetDlgItem (hDlg, IDC_INTERACTIVE_DEBRIS)));
       interactive_debris->load ();
-
-      interactive_smoke =
-        static_cast <ParameterBool *> (
-          g_ParameterFactory.create_parameter <bool> (L"Interactive Smoke")
-        );
 
       interactive_smoke->register_to_xml (FindOption (bmak_gamesettings, L"Interactive_Smoke"), L"Value");
       interactive_smoke->register_to_ini (settings.get_file (), L"SystemSettings", L"bEnableInteractiveSmoke");
       interactive_smoke->bind_to_control (new CheckBox (GetDlgItem (hDlg, IDC_INTERACTIVE_SMOKE)));
       interactive_smoke->load ();
 
-      enhanced_rain =
-        static_cast <ParameterBool *> (
-          g_ParameterFactory.create_parameter <bool> (L"Interactive Smoke")
-        );
-
       enhanced_rain->register_to_xml (FindOption (bmak_gamesettings, L"Rain_FX"), L"Value");
       enhanced_rain->register_to_ini (settings.get_file (), L"SystemSettings", L"bEnableRainFX");
       enhanced_rain->bind_to_control (new CheckBox (GetDlgItem (hDlg, IDC_ENHANCED_RAIN)));
       enhanced_rain->load ();
-
-      enhanced_lightshafts = 
-        static_cast <ParameterBool *> (
-          g_ParameterFactory.create_parameter <bool> (L"Volumetric Lighting (Enhanced Lightshafts)")
-        );
 
       enhanced_lightshafts->register_to_xml (FindOption (bmak_gamesettings, L"Volumetric_Lighting"), L"Value");
       enhanced_lightshafts->register_to_ini (settings.get_file (), L"SystemSettings", L"bEnableVolumetricLighting");
@@ -1339,66 +1436,55 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       enhanced_lightshafts->load ();
 
 
-      mip_fadein0 =
-        static_cast <ParameterFloat *> (
-          g_ParameterFactory.create_parameter <float> (L"Mipmap LOD0 FadeIn Rate")
-        );
-      mip_fadein1 =
-        static_cast <ParameterFloat *> (
-          g_ParameterFactory.create_parameter <float> (L"Mipmap LOD1 FadeIn Rate")
-        );
       mip_fadein0->register_to_ini (engine.get_file (), L"Engine.Engine", L"MipFadeInSpeed0");
       mip_fadein0->load ();
       mip_fadein1->register_to_ini (engine.get_file (), L"Engine.Engine", L"MipFadeInSpeed1");
       mip_fadein1->load ();
 
-      mip_fadeout0 =
-        static_cast <ParameterFloat *> (
-          g_ParameterFactory.create_parameter <float> (L"Mipmap LOD0 FadeOut Rate")
-        );
-      mip_fadeout1 =
-        static_cast <ParameterFloat *> (
-          g_ParameterFactory.create_parameter <float> (L"Mipmap LOD1 FadeOut Rate")
-        );
       mip_fadeout0->register_to_ini (engine.get_file (), L"Engine.Engine", L"MipFadeOutSpeed0");
       mip_fadeout0->load ();
       mip_fadeout1->register_to_ini (engine.get_file (), L"Engine.Engine", L"MipFadeOutSpeed1");
       mip_fadeout1->load ();
 
 
-      shadow_scale =
-        static_cast <ParameterFloat *> (
-          g_ParameterFactory.create_parameter <float> (L"Shadow Scale (Shadow Texels Per-Pixel)")
-        );
-
       shadow_scale->register_to_ini (settings.get_file (), L"SystemSettings", L"ShadowTexelsPerPixel");
       shadow_scale->load ();
 
 
-      framerate_limiting =
-        static_cast <ParameterInt *> (
-          g_ParameterFactory.create_parameter <int> (L"Frame Rate Limiting Setting (not what it sounds like)")
-        );
 
       framerate_limiting->register_to_ini (engine.get_file (), L"Engine.Engine", L"FrameRateLimitingSetting");
       framerate_limiting->load ();
 
-      max_delta_time =
-        static_cast <ParameterFloat *> (
-          g_ParameterFactory.create_parameter <float> (L"Maximum Delta Time")
-        );
-
       max_delta_time->register_to_ini (engine.get_file (), L"Engine.GameEngine", L"MaxDeltaTime");
       max_delta_time->load ();
 
-
-      visibility_frames =
-        static_cast <ParameterInt *> (
-          g_ParameterFactory.create_parameter <int> (L"Primitive Probably Visible Time")
-        );
-
       visibility_frames->register_to_ini (engine.get_file (), L"Engine.Engine", L"PrimitiveProbablyVisibleTime");
       visibility_frames->load ();
+
+
+      //
+      // Now, for the non-game settings -- [BMT.User]
+      //
+      if (first_load) { // Keep this preference across configuration restorations
+        decline_backup =
+          static_cast <ParameterBool *> (
+            g_ParameterFactory.create_parameter <bool> (L"NoBackup")
+          );
+
+        decline_backup->register_to_ini (settings.get_file (), L"BMT.User", L"NoBackup");
+        decline_backup->load ();
+      }
+      else {
+        // This isn't enough, we need to actually save BmSystemSettings.ini to make sure
+        //   config files retain this preference -- DO THAT IN A FUTURE BUILD.
+        decline_backup->store ();
+      }
+
+      streaming_profile->register_to_ini (engine.get_file (), L"BMT.User", L"StreamingProfileID");
+      streaming_profile->load ();
+
+      texgroup_profile->register_to_ini (settings.get_file (), L"BMT.User", L"TexGroupProfileID");
+      texgroup_profile->load ();
 
 
       setup_physx_properties (hDlg);
@@ -1431,6 +1517,8 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
       int window_mode = _wtoi (display_mode_val->value ());
 
+      // @TODO: Radio button wrapper, doing it this way is just plain ridiculous!
+
       if (window_mode == 0) {
         mode = 0;
         handle_window_radios (hDlg, IDC_BORDER_WINDOW);
@@ -1451,6 +1539,63 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         handle_window_radios (hDlg, IDC_FULLSCREEN);
       }
 
+
+      // Visual indication as to which profile is selected...
+      switch (streaming_profile->get_value ())
+      {
+        default:
+        case 0:
+          Button_SetCheck (GetDlgItem (hDlg, IDC_DEFAULT_STREAMING), TRUE);
+          break;
+        case 1:
+          Button_SetCheck (GetDlgItem (hDlg, IDC_SLOW_STREAMING), TRUE);
+          break;
+        case 2:
+          Button_SetCheck (GetDlgItem (hDlg, IDC_BALANCED_STREAMING), TRUE);
+          break;
+        case 3:
+          Button_SetCheck (GetDlgItem (hDlg, IDC_FAST_STREAMING), TRUE);
+          break;
+      }
+
+      // Visual indication for TexGroup policy.
+      switch (texgroup_profile->get_value ())
+      {
+      default:
+      case 0:
+        Button_SetCheck (GetDlgItem (hDlg, IDC_DEFAULT_TEXGROUPS), TRUE);
+        break;
+      case 1:
+        Button_SetCheck (GetDlgItem (hDlg, IDC_OPTIMIZED_TEXGROUPS), TRUE);
+        break;
+      }
+
+
+      // Visual indication for PhysX level
+      int physx_bits = 0;
+
+      physx_bits += ((physx_level->get_value () & 0x01) == 0x01);
+      physx_bits += ((physx_level->get_value () & 0x02) == 0x02);
+      physx_bits += ((physx_level->get_value () & 0x04) == 0x04);
+
+      switch (physx_bits)
+      {
+        // 0 or 1 is low... this whole system is convoluted and the engine's handling of
+        //   PhysXLevel makes no sense, but whatever.
+        default:
+        case 1:
+          Button_SetCheck (GetDlgItem (hDlg, IDC_LOW_PHYSX), TRUE);
+          break;
+        case 2:
+          Button_SetCheck (GetDlgItem (hDlg, IDC_HIGH_PHYSX), TRUE);
+          break;
+        case 3:
+          Button_SetCheck (GetDlgItem (hDlg, IDC_ULTRA_PHYSX), TRUE);
+          break;
+      }
+
+      first_load = false;
+
       //extern INT_PTR CALLBACK ImportExport (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       //return DialogBox (GetWindowInstance (hDlg), MAKEINTRESOURCE (IDD_IMPORT_EXPORT), hDlg, ImportExport);
 
@@ -1459,42 +1604,10 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
     case WM_LBUTTONDBLCLK:
     {
-      static bool debug = false;
+      bool debug = IsWindowVisible (GetDlgItem (hDlg, IDC_DEBUG_GROUP));
       debug = !debug;
 
-      ShowWindow (GetDlgItem (hDlg, IDC_GPUINFO),          (! debug));
-      ShowWindow (GetDlgItem (hDlg, IDC_GPU_GROUP),        (! debug));
-      if (NVAPI::CountPhysicalGPUs () > 0) {
-        // Show/hide the NVIDIA driver tweaks button if applicable
-
-        ShowWindow (GetDlgItem (hDlg, IDC_NV_DRIVER_TWEAKS), (!debug));
-      }
-      ShowWindow (GetDlgItem (hDlg, IDC_DEBUG_GROUP),         debug);
-      ShowWindow (GetDlgItem (hDlg, IDC_NUKE_CONFIG),         debug);
-      ShowWindow (GetDlgItem (hDlg, IDC_BACKUP_CONFIG),       debug);
-      ShowWindow (GetDlgItem (hDlg, IDC_RESTORE_CONFIG),      debug);
-
-      if (debug) {
-        if (BMT_HasBackupConfigFiles ()) {
-          std::wstring backup_time = BMT_GetBackupFileTime ();
-          SetWindowText (GetDlgItem (hDlg, IDC_RESTORE_CONFIG), std::wstring (L" Restore Config Files\n " +
-                                                                                backup_time).c_str ());
-          EnableWindow (GetDlgItem (hDlg, IDC_RESTORE_CONFIG), TRUE);
-          //EnableWindow (GetDlgItem (hDlg, IDC_BACKUP_CONFIG), FALSE);
-          EnableWindow (GetDlgItem (hDlg, IDC_BACKUP_CONFIG),  TRUE);
-          std::wstring config_time = BMT_GetConfigFileTime ();
-          SetWindowText (GetDlgItem (hDlg, IDC_BACKUP_CONFIG), std::wstring (L" Backup Config Files\n " +
-                                                                             config_time).c_str ());
-        }
-        else {
-          std::wstring config_time = BMT_GetConfigFileTime ();
-          SetWindowText (GetDlgItem (hDlg, IDC_BACKUP_CONFIG), std::wstring (L" Backup Config Files\n " +
-                                                                             config_time).c_str ());
-          EnableWindow (GetDlgItem (hDlg, IDC_BACKUP_CONFIG),  TRUE);
-          EnableWindow (GetDlgItem (hDlg, IDC_RESTORE_CONFIG), FALSE);
-          SetWindowText (GetDlgItem (hDlg, IDC_RESTORE_CONFIG), L" Restore Config Files");
-        }
-      }
+      setup_debug_utils (hDlg, debug);
     } break;
 
     case WM_COMMAND:
@@ -1526,10 +1639,12 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       }
 
       if (LOWORD (wParam) == IDC_DEFAULT_STREAMING) {
+        streaming_profile->set_value (0);
         engine.import (std::wstring (streaming.default));
       }
 
       if (LOWORD (wParam) == IDC_SLOW_STREAMING) {
+        streaming_profile->set_value (1);
         engine.import (std::wstring (streaming.slow));
 
         // Don't do this for any profile that uses the texture file cache,
@@ -1539,21 +1654,25 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       }
 
       if (LOWORD (wParam) == IDC_BALANCED_STREAMING) {
+        streaming_profile->set_value (2);
         engine.import (std::wstring (streaming.balanced));
         BMT_OptimizeStreamingMemory ();
       }
 
       if (LOWORD (wParam) == IDC_FAST_STREAMING) {
+        streaming_profile->set_value (3);
         engine.import (std::wstring (streaming.fast));
         BMT_OptimizeStreamingMemory ();
       }
 
       if (LOWORD (wParam) == IDC_DEFAULT_TEXGROUPS) {
         settings.import (std::wstring (texgroups.default));
+        texgroup_profile->set_value (0);
       }
 
       if (LOWORD (wParam) == IDC_OPTIMIZED_TEXGROUPS) {
         settings.import (std::wstring (texgroups.optimized));
+        texgroup_profile->set_value (1);
       }
 
       if (LOWORD (wParam) == IDC_HARDWARE_PHYSX) {
@@ -1569,7 +1688,8 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
       if (LOWORD (wParam) == IDC_LOW_PHYSX)
       {
-        physx_level->set_value (1);
+        //physx_level->set_value (1);
+        physx_level->set_value (0);
       }
 
       if (LOWORD (wParam) == IDC_HIGH_PHYSX)
@@ -1607,14 +1727,47 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
       if (LOWORD (wParam) == IDC_RESTORE_CONFIG)
       {
-        BMT_RestoreConfigFiles ();
-        EndDialog (hDlg, LOWORD (wParam));
-        return (INT_PTR)TRUE;
+        int status =
+          BMT_MessageBox (L"This will discard any changes you've made and restore configuration to an earlier state.\n\n"
+                          L"\tDo you wish to continue?",
+                          L"Restore Configuration From Backup?",
+            MB_YESNO | MB_ICONQUESTION);
+
+        if (status == IDYES) {
+
+          HINSTANCE hInst = GetWindowInstance (hDlg);
+
+          BMT_RestoreConfigFiles ();
+          EndDialog (hDlg, LOWORD (wParam));
+
+          // We're effectively going to recurse here, there's a slim
+          //  possibility of a stack overflow if the user does this enough.
+          return (int)DialogBox (hInst, MAKEINTRESOURCE (IDD_BATMAN), NULL, Config);
+        }
       }
 
       if (LOWORD (wParam) == IDC_BACKUP_CONFIG)
       {
-        BMT_CreateBackupConfig ();
+        bool allow_backup = true;
+
+        // Confirm before overwriting an existing backup.
+        if (BMT_HasBackupConfigFiles ()) {
+          int status =
+            BMT_MessageBox (L"A previous backup already exists.\n\n"
+                            L"\tWould you like to replace it?",
+                            L"Replace Existing Configuration Backup?",
+              MB_YESNO | MB_ICONQUESTION);
+
+          if (status != IDYES)
+            allow_backup = false;
+        }
+
+        // Honor the user's selection
+        if (allow_backup)
+          BMT_CreateBackupConfig ();
+
+        // Basically just refresh the file timestamps
+        setup_debug_utils (hDlg, true);
       }
 
       if (LOWORD (wParam) == IDCANCEL)
@@ -1731,18 +1884,11 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         engine.import   (signatures.engine);
 
         // System to make an automatic backup if INI files at save-time
-        if (!BMT_HasBackupConfigFiles ()) {
+        if (! BMT_HasBackupConfigFiles ()) {
           // So, no backups exist - maybe the user doesn't want backups?
-          bmt::ParameterBool* decline_backup =
-            static_cast <ParameterBool *> (
-              g_ParameterFactory.create_parameter <bool> (L"NoBackup")
-            );
-          decline_backup->register_to_ini (settings.get_file (), L"BMT.User", L"NoBackup");
-          decline_backup->load ();
-
           if (! decline_backup->get_value ()) {
             int status =
-              BMT_MessageBox (L"This appears to be your first time saving, would you like to backup your configuration now?\n\n\tIf you press [No], you will never be prompted again.",
+              BMT_MessageBox (L"No backup configuration files were detected, would you like to backup your configuration now?\n\n\tIf you press [No], you will never be prompted again.",
                               L"Create Backup Configuration Files?",
                               MB_YESNOCANCEL | MB_ICONQUESTION);
 
@@ -1760,6 +1906,9 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
             decline_backup->store ();
           }
         }
+
+        streaming_profile->store ();
+        texgroup_profile->store  ();
 
         SaveXML ();
 

@@ -287,4 +287,12 @@ extern bmt::ParameterInt*   framerate_limiting;
 extern bmt::ParameterFloat* max_delta_time;
 extern bmt::ParameterInt*   visibility_frames;
 
+// These aren't game settings, they're things we add to the INI for
+//   visual indication to let the user know which settings they applied last.
+extern bmt::ParameterInt*   streaming_profile;
+extern bmt::ParameterInt*   texgroup_profile;
+
+// This controls the auto-backup behavior (it's another non-game setting)
+extern bmt::ParameterBool* decline_backup;
+
 #endif /* __BMT__PARAMETER_H__ */

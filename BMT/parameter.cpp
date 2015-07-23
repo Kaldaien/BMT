@@ -332,3 +332,8 @@ bmt::ParameterFloat* shadow_scale;
 bmt::ParameterInt*   framerate_limiting;
 bmt::ParameterFloat* max_delta_time;
 bmt::ParameterInt*   visibility_frames;
+
+bmt::ParameterInt*   streaming_profile;
+bmt::ParameterInt*   texgroup_profile;
+
+bmt::ParameterBool*  decline_backup;
