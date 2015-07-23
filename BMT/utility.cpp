@@ -26,11 +26,18 @@
 int
 BMT_MessageBox (std::wstring caption, std::wstring title, uint32_t flags)
 {
+  extern bool messagebox_active;
   extern HWND hWndApp;
 
   HWND parent = IsWindow (hWndApp) ? hWndApp : NULL;
 
-  return MessageBox (parent, caption.c_str (), title.c_str (), flags | MB_APPLMODAL | MB_TOPMOST | MB_SETFOREGROUND);
+  messagebox_active = true;
+
+  int ret = MessageBox (hWndApp, caption.c_str (), title.c_str (), flags | MB_SYSTEMMODAL | MB_TOPMOST | MB_SETFOREGROUND);
+
+  messagebox_active = false;
+
+  return ret;
 }
 
 std::wstring
@@ -116,4 +123,136 @@ BMT_DeleteAllConfigFiles (void)
   DeleteFile (std::wstring (bmt::XML::install_path + L"..\\..\\BMGame\\Config\\BmSystemSettings.ini").c_str ());
   DeleteFile (std::wstring (bmt::XML::install_path + L"..\\..\\BMGame\\Config\\BmEngine.ini").c_str ());
   DeleteFile (std::wstring (BMT_GetDocumentsDir () + L"\\WB Games\\Batman Arkham Knight\\GFXSettings.BatmanArkhamKnight.xml").c_str ());
+}
+
+bool
+BMT_HasBackupConfigFiles (void)
+{
+  WIN32_FIND_DATA FindFileData;
+
+  if (FindFirstFile (std::wstring (BMT_GetDocumentsDir () + L"\\WB Games\\Batman Arkham Knight\\GFXSettings.BatmanArkhamKnight.bmt").c_str (), &FindFileData) != INVALID_HANDLE_VALUE)
+    return true;
+
+  return false;
+}
+
+// Copies a file preserving file times
+void
+BMT_FullCopy (std::wstring from, std::wstring to)
+{
+  DeleteFile (to.c_str ());
+  CopyFile   (from.c_str (), to.c_str (), FALSE);
+
+  WIN32_FIND_DATA FromFileData;
+  HANDLE hFrom = FindFirstFile (from.c_str (), &FromFileData);
+
+  OFSTRUCT ofTo;
+  ofTo.cBytes = sizeof (OFSTRUCT);
+
+  char     szFileTo [MAX_PATH];
+
+  WideCharToMultiByte (CP_OEMCP, 0, to.c_str (), -1, szFileTo, MAX_PATH, NULL, NULL);
+  HFILE hfTo = OpenFile (szFileTo, &ofTo, NULL);
+
+  CloseHandle ((HANDLE)hfTo);
+
+  // Here's where the magic happens, apply the attributes from the original file to the new one!
+  SetFileTime ((HANDLE)hfTo, &FromFileData.ftCreationTime, &FromFileData.ftLastAccessTime, &FromFileData.ftLastWriteTime);
+
+  FindClose   (hFrom);
+}
+
+void
+BMT_CreateBackupConfig (void)
+{
+  BMT_FullCopy ( std::wstring (BMT_GetDocumentsDir () + L"\\WB Games\\Batman Arkham Knight\\GFXSettings.BatmanArkhamKnight.xml"),
+                 std::wstring (BMT_GetDocumentsDir () + L"\\WB Games\\Batman Arkham Knight\\GFXSettings.BatmanArkhamKnight.bmt") );
+
+  BMT_FullCopy ( std::wstring (bmt::XML::install_path + L"..\\..\\BMGame\\Config\\BmSystemSettings.ini"),
+                 std::wstring (bmt::XML::install_path + L"..\\..\\BMGame\\Config\\BmSystemSettings.bmt") );
+
+  BMT_FullCopy ( std::wstring (bmt::XML::install_path + L"..\\..\\BMGame\\Config\\BmEngine.ini"),
+                 std::wstring (bmt::XML::install_path + L"..\\..\\BMGame\\Config\\BmEngine.bmt") );
+}
+
+void
+BMT_RestoreConfigFiles (void)
+{
+  BMT_FullCopy ( std::wstring (BMT_GetDocumentsDir () + L"\\WB Games\\Batman Arkham Knight\\GFXSettings.BatmanArkhamKnight.bmt"),
+                 std::wstring (BMT_GetDocumentsDir () + L"\\WB Games\\Batman Arkham Knight\\GFXSettings.BatmanArkhamKnight.xml") );
+
+  BMT_FullCopy ( std::wstring (bmt::XML::install_path + L"..\\..\\BMGame\\Config\\BmSystemSettings.bmt"),
+                 std::wstring (bmt::XML::install_path + L"..\\..\\BMGame\\Config\\BmSystemSettings.ini") );
+
+  BMT_FullCopy ( std::wstring (bmt::XML::install_path + L"..\\..\\BMGame\\Config\\BmEngine.bmt"),
+                 std::wstring (bmt::XML::install_path + L"..\\..\\BMGame\\Config\\BmEngine.ini") );
+
+  DeleteFile (std::wstring (bmt::XML::install_path + L"..\\..\\BMGame\\Config\\BmSystemSettings.bmt").c_str ());
+  DeleteFile (std::wstring (bmt::XML::install_path + L"..\\..\\BMGame\\Config\\BmEngine.bmt").c_str ());
+  DeleteFile (std::wstring (BMT_GetDocumentsDir () + L"\\WB Games\\Batman Arkham Knight\\GFXSettings.BatmanArkhamKnight.bmt").c_str ());
+}
+
+// Gets the timestamp on the current backup file
+std::wstring
+BMT_GetBackupFileTime (void)
+{
+  WIN32_FIND_DATA FindFileData;
+
+  HANDLE hFileBackup = FindFirstFile (std::wstring (bmt::XML::install_path + L"..\\..\\BMGame\\Config\\BmSystemSettings.bmt").c_str (), &FindFileData);
+
+  FindClose (hFileBackup);
+
+  FILETIME   ftModified;
+  FileTimeToLocalFileTime (&FindFileData.ftLastWriteTime, &ftModified);
+
+  SYSTEMTIME stModified;
+  FileTimeToSystemTime (&ftModified, &stModified);
+
+  wchar_t wszFileTime [512];
+
+  GetDateFormat (LOCALE_CUSTOM_UI_DEFAULT, DATE_AUTOLAYOUT, &stModified, NULL, wszFileTime, 512);
+
+  std::wstring date_time = wszFileTime;
+
+  GetTimeFormat (LOCALE_CUSTOM_UI_DEFAULT, TIME_NOSECONDS, &stModified, NULL, wszFileTime, 512);
+
+  date_time += L" ";
+  date_time += wszFileTime;
+
+  return date_time;
+}
+
+// Gets the timestamp on the current config file
+std::wstring
+BMT_GetConfigFileTime (void)
+{
+  //
+  // XXX: It's possible that one file is newer than another, but for now let's
+  //        assume SystemSettings.ini is always the newest and then see how
+  //          much trouble that assumption gets us into down the line ;)
+  //
+  WIN32_FIND_DATA FindFileData;
+
+  HANDLE hFileBackup = FindFirstFile (std::wstring (bmt::XML::install_path + L"..\\..\\BMGame\\Config\\BmSystemSettings.ini").c_str (), &FindFileData);
+
+  FILETIME   ftModified;
+  FileTimeToLocalFileTime (&FindFileData.ftLastWriteTime, &ftModified);
+
+  SYSTEMTIME stModified;
+  FileTimeToSystemTime (&ftModified, &stModified);
+
+  FindClose (hFileBackup);
+
+  wchar_t wszFileTime [512];
+
+  GetDateFormat (LOCALE_CUSTOM_UI_DEFAULT, DATE_AUTOLAYOUT, &stModified, NULL, wszFileTime, 512);
+
+  std::wstring date_time = wszFileTime;
+
+  GetTimeFormat (LOCALE_CUSTOM_UI_DEFAULT, TIME_NOSECONDS, &stModified, NULL, wszFileTime, 512);
+
+  date_time += L" ";
+  date_time += wszFileTime;
+
+  return date_time;
 }

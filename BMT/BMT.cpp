@@ -36,10 +36,11 @@
 
 using namespace bmt;
 
-#define BMT_VERSION_STR L"0.47"
+#define BMT_VERSION_STR L"0.48"
 
 INT_PTR CALLBACK  Config (HWND, UINT, WPARAM, LPARAM);
 
+bool  messagebox_active; // Workaround some particularly strange behavior
 HWND  hWndApp;
 HICON bmt_icon;
 HICON nv_icon;
@@ -1066,8 +1067,14 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       SetWindowPos (GetDlgItem (hDlg, IDCANCEL), NULL, 0, 0, size.cx + 6, size.cy, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 
       hIcon = LoadIcon (hShell32, MAKEINTRESOURCE (145));
-
       SendMessage (GetDlgItem (hDlg, IDC_NUKE_CONFIG), BM_SETIMAGE, IMAGE_ICON, (LPARAM)hIcon);
+
+      //hIcon = LoadIcon (hShell32, MAKEINTRESOURCE (46));
+      hIcon = LoadIcon (hShell32, MAKEINTRESOURCE (16771));
+      SendMessage (GetDlgItem (hDlg, IDC_BACKUP_CONFIG), BM_SETIMAGE, IMAGE_ICON, (LPARAM)hIcon);
+
+      hIcon = LoadIcon (hShell32, MAKEINTRESOURCE (16741));
+      SendMessage (GetDlgItem (hDlg, IDC_RESTORE_CONFIG), BM_SETIMAGE, IMAGE_ICON, (LPARAM)hIcon);
 
       SetWindowText (hDlg, L"Batman Tweak v " BMT_VERSION_STR L" (Beta)");
 
@@ -1464,10 +1471,38 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       }
       ShowWindow (GetDlgItem (hDlg, IDC_DEBUG_GROUP),         debug);
       ShowWindow (GetDlgItem (hDlg, IDC_NUKE_CONFIG),         debug);
+      ShowWindow (GetDlgItem (hDlg, IDC_BACKUP_CONFIG),       debug);
+      ShowWindow (GetDlgItem (hDlg, IDC_RESTORE_CONFIG),      debug);
+
+      if (debug) {
+        if (BMT_HasBackupConfigFiles ()) {
+          std::wstring backup_time = BMT_GetBackupFileTime ();
+          SetWindowText (GetDlgItem (hDlg, IDC_RESTORE_CONFIG), std::wstring (L" Restore Config Files\n " +
+                                                                                backup_time).c_str ());
+          EnableWindow (GetDlgItem (hDlg, IDC_RESTORE_CONFIG), TRUE);
+          //EnableWindow (GetDlgItem (hDlg, IDC_BACKUP_CONFIG), FALSE);
+          EnableWindow (GetDlgItem (hDlg, IDC_BACKUP_CONFIG),  TRUE);
+          std::wstring config_time = BMT_GetConfigFileTime ();
+          SetWindowText (GetDlgItem (hDlg, IDC_BACKUP_CONFIG), std::wstring (L" Backup Config Files\n " +
+                                                                             config_time).c_str ());
+        }
+        else {
+          std::wstring config_time = BMT_GetConfigFileTime ();
+          SetWindowText (GetDlgItem (hDlg, IDC_BACKUP_CONFIG), std::wstring (L" Backup Config Files\n " +
+                                                                             config_time).c_str ());
+          EnableWindow (GetDlgItem (hDlg, IDC_BACKUP_CONFIG),  TRUE);
+          EnableWindow (GetDlgItem (hDlg, IDC_RESTORE_CONFIG), FALSE);
+          SetWindowText (GetDlgItem (hDlg, IDC_RESTORE_CONFIG), L" Restore Config Files");
+        }
+      }
     } break;
 
     case WM_COMMAND:
     {
+      // What insanity is this?! The message pump shouldn't be working while a message box is up!
+      if (messagebox_active) // Ignore button clicks while a Message Box is active
+        return 0;
+
       if (LOWORD (wParam) == IDC_BORDERLESS_WINDOW || 
           LOWORD (wParam) == IDC_BORDER_WINDOW     ||
           LOWORD (wParam) == IDC_FULLSCREEN) {
@@ -1568,6 +1603,18 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
           EndDialog (hDlg, LOWORD (wParam));
           return (INT_PTR)TRUE;
         }
+      }
+
+      if (LOWORD (wParam) == IDC_RESTORE_CONFIG)
+      {
+        BMT_RestoreConfigFiles ();
+        EndDialog (hDlg, LOWORD (wParam));
+        return (INT_PTR)TRUE;
+      }
+
+      if (LOWORD (wParam) == IDC_BACKUP_CONFIG)
+      {
+        BMT_CreateBackupConfig ();
       }
 
       if (LOWORD (wParam) == IDCANCEL)
@@ -1678,10 +1725,43 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
           settings.set_value (L"SystemSettings", L"WindowDisplayMode", L"2");
         }
 
-        SaveXML ();
+        bool cancel = false;
 
         settings.import (signatures.settings);
         engine.import   (signatures.engine);
+
+        // System to make an automatic backup if INI files at save-time
+        if (!BMT_HasBackupConfigFiles ()) {
+          // So, no backups exist - maybe the user doesn't want backups?
+          bmt::ParameterBool* decline_backup =
+            static_cast <ParameterBool *> (
+              g_ParameterFactory.create_parameter <bool> (L"NoBackup")
+            );
+          decline_backup->register_to_ini (settings.get_file (), L"BMT.User", L"NoBackup");
+          decline_backup->load ();
+
+          if (! decline_backup->get_value ()) {
+            int status =
+              BMT_MessageBox (L"This appears to be your first time saving, would you like to backup your configuration now?\n\n\tIf you press [No], you will never be prompted again.",
+                              L"Create Backup Configuration Files?",
+                              MB_YESNOCANCEL | MB_ICONQUESTION);
+
+            if (status == IDCANCEL)
+              return (INT_PTR)TRUE;
+
+            if (status == IDYES) {
+              BMT_CreateBackupConfig    ();
+              decline_backup->set_value (false);
+            }
+            else {
+              decline_backup->set_value (true);
+            }
+
+            decline_backup->store ();
+          }
+        }
+
+        SaveXML ();
 
         settings.save (install_path);
         engine.save   (install_path);

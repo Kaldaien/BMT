@@ -27,6 +27,14 @@ bool          BMT_IsAdmin              (void);
 int           BMT_MessageBox           (std::wstring caption, std::wstring title, uint32_t flags);
 void          BMT_DeleteAllConfigFiles (void);
 
+bool          BMT_HasBackupConfigFiles (void);
+std::wstring  BMT_GetConfigFileTime    (void);
+void          BMT_CreateBackupConfig   (void);
+void          BMT_RestoreConfigFiles   (void);
+
+std::wstring  BMT_GetBackupFileTime    (void);
+std::wstring  BMT_GetConfigFileTime    (void);
+
 inline size_t
 BMT_NextPowerOfTwo (size_t x)
 {
