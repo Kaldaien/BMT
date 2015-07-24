@@ -27,6 +27,9 @@
 #include "dxgi.h"
 #include "wmi.h"
 
+#include <map>
+#include <set>
+
 #include <cstdio>
 
 #include <windowsx.h>
@@ -36,7 +39,7 @@
 
 using namespace bmt;
 
-#define BMT_VERSION_STR L"0.49"
+#define BMT_VERSION_STR L"0.50"
 
 INT_PTR CALLBACK  Config (HWND, UINT, WPARAM, LPARAM);
 
@@ -424,6 +427,92 @@ void tune_physx_memory (HWND hDlg, size_t& heap, size_t& mesh_cache)
   }
 }
 
+
+void get_resolution (HWND hDlg, int* x, int* y, int* refresh)
+{
+  HWND hWndResolution = GetDlgItem (hDlg, IDC_RESOLUTION);
+  HWND hWndRefresh    = GetDlgItem (hDlg, IDC_REFRESH_RATE);
+
+  wchar_t wszRes [64];
+  ComboBox_GetText (hWndResolution, wszRes, 64);
+
+  wchar_t wszRef [16];
+  ComboBox_GetText (hWndRefresh, wszRef, 16);
+
+  swscanf_s (wszRes, L"%dx%d", x, y);
+  swscanf_s (wszRef, L"%d", refresh);
+}
+
+void setup_resolution (HWND hDlg)
+{
+  DEVMODE dmDisplay;
+  ZeroMemory (&dmDisplay, sizeof DEVMODE);
+  dmDisplay.dmSize = sizeof DEVMODE;
+
+  // X,Y pairs are mapped to sets of refresh rates
+  std::map <std::pair <int, int>, std::set <int> > resolutions;
+
+  int i = 0;
+  while (EnumDisplaySettings (NULL, i, &dmDisplay)) {
+    i++;
+
+    std::pair <int, int> res;
+    res.first  = dmDisplay.dmPelsWidth;
+    res.second = dmDisplay.dmPelsHeight;
+    resolutions [res].insert (dmDisplay.dmDisplayFrequency);
+  }
+
+  std::map <std::pair <int, int>, std::set <int> >::const_iterator res = resolutions.begin ();
+  std::map <std::pair <int, int>, std::set <int> >::const_iterator end = resolutions.end ();
+
+  HWND hWndResolution = GetDlgItem (hDlg, IDC_RESOLUTION);
+  HWND hWndRefresh    = GetDlgItem (hDlg, IDC_REFRESH_RATE);
+
+  ComboBox_ResetContent (hWndResolution);
+  ComboBox_ResetContent (hWndRefresh);
+
+  int sel = -1;
+        i =  0;
+  while (res != end) {
+    wchar_t wszRes [64];
+    swprintf (wszRes, 64, L"%dx%d", res->first.first, res->first.second);
+    ComboBox_InsertString (hWndResolution, i++, wszRes);
+    if (res_x->get_value () == res->first.first &&
+        res_y->get_value () == res->first.second)
+      sel = (i - 1);
+    ++res;
+  }
+
+  // Set to highest resolution if no valid resolution is selected
+  if (sel == -1)
+    sel = (i - 1);
+
+  ComboBox_SetCurSel (hWndResolution, sel);
+
+  res = resolutions.find (std::pair <int, int> (res_x->get_value (), res_y->get_value ()));
+
+  if (res != resolutions.end ()) {
+    std::set <int>::const_iterator refresh = res->second.begin ();
+
+      i =  0;
+    sel = -1;
+
+    while (refresh != res->second.end ()) {
+      wchar_t wszRefresh [64];
+      swprintf (wszRefresh, 64, L"%d", *refresh);
+      ComboBox_InsertString (hWndRefresh, i++, wszRefresh);
+      if (refresh_rate->get_value () == *refresh)
+        sel = (i - 1);
+      ++refresh;
+    }
+
+    // Set to highest refresh if no valid refresh is selected
+    if (sel == -1)
+      sel = (i - 1);
+
+    ComboBox_SetCurSel (hWndRefresh, sel);
+  }
+}
 
 // This resizes a UI control, avoid calling it multiple times or it will continue
 //   to shrink each time!
@@ -1025,7 +1114,7 @@ void handle_window_radios (HWND hDlg, WORD ID)
       SetWindowLong   (GetDlgItem (hDlg, IDC_BORDERLESS_WINDOW), GWL_STYLE, style);
       Button_SetCheck (GetDlgItem (hDlg, IDC_BORDERLESS_WINDOW), 1);
 
-      // Ignore BMAK startup/shutdown, we're not chaning resolution
+      // Ignore BMAK startup/shutdown, we're not changing resolution
       WMI::StopMonitoring ();
     }
     else {
@@ -1090,9 +1179,10 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
   {
     case WM_INITDIALOG:
     {
-      SendMessage (hDlg, WM_SETICON, ICON_BIG, (LPARAM)bmt_icon);
+      SendMessage (hDlg, WM_SETICON, ICON_BIG,   (LPARAM)bmt_icon);
       SendMessage (hDlg, WM_SETICON, ICON_SMALL, (LPARAM)bmt_icon);
 
+      // Wow this code is ugly, it all needs to be wrapped...
       HINSTANCE hShell32 = LoadLibrary (L"shell32.dll");
       HICON     hIcon = LoadIcon (hShell32, MAKEINTRESOURCE (16761));
 
@@ -1110,7 +1200,6 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       hIcon = LoadIcon (hShell32, MAKEINTRESOURCE (145));
       SendMessage (GetDlgItem (hDlg, IDC_NUKE_CONFIG), BM_SETIMAGE, IMAGE_ICON, (LPARAM)hIcon);
 
-      //hIcon = LoadIcon (hShell32, MAKEINTRESOURCE (46));
       hIcon = LoadIcon (hShell32, MAKEINTRESOURCE (16771));
       SendMessage (GetDlgItem (hDlg, IDC_BACKUP_CONFIG), BM_SETIMAGE, IMAGE_ICON, (LPARAM)hIcon);
 
@@ -1319,17 +1408,17 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
       refresh_rate->register_to_xml (FindNode (bmak_gamesettings, L"RESOLUTION"), L"RefreshRate");
       refresh_rate->register_to_ini (engine.get_file (), L"Engine.Client", L"MinDesiredFrameRate");
-      refresh_rate->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_REFRESH_RATE)));
+      //refresh_rate->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_REFRESH_RATE)));
       refresh_rate->load ();
 
       res_x->register_to_xml (FindOption (bmak_gamesettings, L"ResolutionX"), L"Value");
       res_x->register_to_ini (settings.get_file (), L"SystemSettings", L"ResX");
-      res_x->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_RES_X)));
+      //res_x->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_RES_X)));
       res_x->load ();
 
       res_y->register_to_xml (FindOption (bmak_gamesettings, L"ResolutionY"), L"Value");
       res_y->register_to_ini (settings.get_file (), L"SystemSettings", L"ResY");
-      res_y->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_RES_Y)));
+      //res_y->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_RES_Y)));
       res_y->load ();
 
       max_fps->register_to_ini (settings.get_file (), L"SystemSettings", L"MaxFPS");
@@ -1476,7 +1565,7 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       }
       else {
         // This isn't enough, we need to actually save BmSystemSettings.ini to make sure
-        //   config files retain this preference -- DO THAT IN A FUTURE BUILD.
+        //   config files retain this preference -- @FIXME: Persistent backup preference.
         decline_backup->store ();
       }
 
@@ -1487,6 +1576,7 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       texgroup_profile->load ();
 
 
+      setup_resolution       (hDlg);
       setup_physx_properties (hDlg);
       setup_blur_samples     (hDlg);
       setup_tex_filter       (hDlg);
@@ -1632,6 +1722,8 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         res_x->set_value        (dmNow.dmPelsWidth);
         res_y->set_value        (dmNow.dmPelsHeight);
         refresh_rate->set_value (dmNow.dmDisplayFrequency);
+
+        setup_resolution (hDlg);
       }
 
       if (LOWORD (wParam) == IDC_NV_DRIVER_TWEAKS) {
@@ -1679,6 +1771,28 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         hardware_physx->set_value (Button_GetCheck (GetDlgItem (hDlg, IDC_HARDWARE_PHYSX)) == TRUE);
 
         setup_physx_properties (hDlg);
+      }
+
+      if (LOWORD (wParam) == IDC_RESOLUTION) {
+        if (HIWORD (wParam) == CBN_SELCHANGE) {
+          int x, y, refresh;
+          get_resolution (hDlg, &x, &y, &refresh);
+
+          res_x->set_value (x);
+          res_y->set_value (y);
+
+          // Set the refresh rate whenever the resolution changes...
+          setup_resolution (hDlg);
+        }
+      }
+
+      // Update refresh rate immediately
+      if (LOWORD (wParam) == IDC_REFRESH_RATE) {
+        if (HIWORD (wParam) == CBN_SELCHANGE) {
+          int x, y, refresh;
+          get_resolution (hDlg, &x, &y, &refresh);
+          refresh_rate->set_value (refresh);
+        }
       }
 
       if (LOWORD (wParam) == IDC_PHYSX_GPU) {
@@ -1778,9 +1892,18 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       }
 
       else if (LOWORD (wParam) == IDOK) {
+        int x, y, refresh;
+        get_resolution (hDlg, &x, &y, &refresh);
+
+        res_x->set_value    (x);
         res_x->store        ();
+
+        res_y->set_value    (y);
         res_y->store        ();
-        refresh_rate->store ();
+
+        refresh_rate->set_value (refresh);
+        refresh_rate->store     ();
+
         max_fps->store      ();
 
         use_vsync->store    ();

@@ -38,7 +38,7 @@ using namespace bmt;
 using namespace bmt::NVAPI;
 
 static bool nvapi_silent = false;
-static bool support_mfaa = false;
+//static bool support_mfaa = false;
 
 #define NVAPI_SILENT()  { nvapi_silent = true;  }
 #define NVAPI_VERBOSE() { nvapi_silent = false; }
@@ -162,7 +162,7 @@ public:
 
   bool setup_ui             (HWND hDlg);
 
-  int  poll_mfaa            (void);
+//int  poll_mfaa            (void);
   int  poll_prerender_limit (void);
   int  poll_power_policy    (void);
 
@@ -174,7 +174,7 @@ public:
 private:
   HWND hWndPreRenderLimit;
   HWND hWndPowerPolicy;
-  HWND hWndUseMFAA;
+//HWND hWndUseMFAA;
 } *misc = nullptr;
 
 int
@@ -284,10 +284,10 @@ bmt::NVAPI::EnumGPUs_DXGI (void)
   if (ret == NVAPI_OK) {
     NVAPI_SILENT ();
 
-    NVAPI_CALL2 (DRS_GetSetting (hSession, hProfile, MAXWELL_B_SAMPLE_INTERLEAVE_ID, &misc->mfaa), ret);
+  //NVAPI_CALL2 (DRS_GetSetting (hSession, hProfile, MAXWELL_B_SAMPLE_INTERLEAVE_ID, &misc->mfaa), ret);
 
-    if (ret == NVAPI_OK)
-      support_mfaa = true;
+  //if (ret == NVAPI_OK)
+    //support_mfaa = true;
 
     NVAPI_CALL (DRS_GetSetting (hSession, hProfile, PRERENDERLIMIT_ID,   &misc->prerender_limit));
     NVAPI_CALL (DRS_GetSetting (hSession, hProfile, PREFERRED_PSTATE_ID, &misc->power_policy));
@@ -538,7 +538,7 @@ nvcfg_Miscellaneous::nvcfg_Miscellaneous (void)
 {
   prerender_limit.version = NVDRS_SETTING_VER;
   power_policy.version    = NVDRS_SETTING_VER;
-  mfaa.version            = NVDRS_SETTING_VER;
+//mfaa.version            = NVDRS_SETTING_VER;
 }
 
 bool
@@ -546,7 +546,7 @@ nvcfg_Miscellaneous::setup_ui (HWND hDlg)
 {
   hWndPreRenderLimit = GetDlgItem (hDlg, IDC_PRERENDERED_FRAMES);
   hWndPowerPolicy    = GetDlgItem (hDlg, IDC_POWER_POLICY);
-  hWndUseMFAA        = GetDlgItem (hDlg, IDC_CHECK2);
+//hWndUseMFAA        = GetDlgItem (hDlg, IDC_CHECK2);
 
   ComboBox_ResetContent (hWndPreRenderLimit);
 
@@ -573,12 +573,12 @@ nvcfg_Miscellaneous::setup_ui (HWND hDlg)
 
   ComboBox_SetCurSel (hWndPowerPolicy, power_policy.u32CurrentValue);
 
-  Button_Enable (hWndUseMFAA, support_mfaa);
+//Button_Enable (hWndUseMFAA, support_mfaa);
 
-  if (support_mfaa && mfaa.u32CurrentValue)
-    Button_SetCheck (hWndUseMFAA, true);
-  else
-    Button_SetCheck (hWndUseMFAA, false);
+//if (support_mfaa && mfaa.u32CurrentValue)
+//  Button_SetCheck (hWndUseMFAA, true);
+//else
+//  Button_SetCheck (hWndUseMFAA, false);
 
   return true;
 }
@@ -595,11 +595,11 @@ nvcfg_Miscellaneous::poll_power_policy (void)
   return ComboBox_GetCurSel (hWndPowerPolicy);
 }
 
-int
-nvcfg_Miscellaneous::poll_mfaa (void)
-{
-  return Button_GetCheck (hWndUseMFAA);
-}
+//int
+//nvcfg_Miscellaneous::poll_mfaa (void)
+//{
+//  return Button_GetCheck (hWndUseMFAA);
+//}
 
 
 void SaveDriverTweaksNV (HWND hDlg);
@@ -623,7 +623,7 @@ DriverConfigNV (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
       Edit_SetText (GetDlgItem (hDlg, IDC_QUALITY_DESC),
         L"A negative LOD bias will sharpen textures throughout the game, but creates artifacts on glass and various other surfaces... it is intended to make signs easier to read.\r\n\r\n"
-        L"MFAA requires a Maxwell \"B\"-class NVIDIA GPU (9xx series) and SLI must be disabled; enabling it here does not guarantee it will work.\n");
+        );//L"MFAA requires a Maxwell \"B\"-class NVIDIA GPU (9xx series) and SLI must be disabled; enabling it here does not guarantee it will work.\n");
     }
 
     case WM_COMMAND:
@@ -726,10 +726,10 @@ void SaveDriverTweaksNV (HWND hDlg)
     NVAPI_SET_DWORD (lodbias->allow_negative, PS_TEXFILTER_NO_NEG_LODBIAS_ID, lodbias->poll_allow_negative ())
     NVAPI_CALL      (DRS_SetSetting (hSession, hProfile, &lodbias->allow_negative));
 
-    if (support_mfaa) {
-      NVAPI_SET_DWORD (misc->mfaa, MAXWELL_B_SAMPLE_INTERLEAVE_ID, misc->poll_mfaa ());
-      NVAPI_CALL      (DRS_SetSetting (hSession, hProfile, &misc->mfaa));
-    }
+//    if (support_mfaa) {
+//      NVAPI_SET_DWORD (misc->mfaa, MAXWELL_B_SAMPLE_INTERLEAVE_ID, misc->poll_mfaa ());
+//      NVAPI_CALL      (DRS_SetSetting (hSession, hProfile, &misc->mfaa));
+//    }
   }
 
   NVAPI_CALL (DRS_SaveSettings   (hSession));

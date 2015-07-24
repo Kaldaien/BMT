@@ -89,5 +89,6 @@
 #define IDC_GPU_GROUP                           1071
 #define IDC_BACKUP_CONFIG                       1072
 #define IDC_RESTORE_CONFIG                      1073
+#define IDC_RESOLUTION                          1074
 #define IDC_DATA                                40000
 #define IDS_APP_TITLE                           40000
