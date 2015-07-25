@@ -432,6 +432,9 @@ bmt::INI::File::write (std::wstring fname)
   FILE*   fOut;
   errno_t ret;
 
+  // Strip Read-Only
+  SetFileAttributes (fname.c_str (), FILE_ATTRIBUTE_NORMAL);
+
   TRY_FILE_IO (_wfopen_s (&fOut, fname.c_str (), L"w,ccs=UTF-16LE"), fname.c_str (), ret);
 
   if (ret != 0 || fOut == 0) {
@@ -461,6 +464,9 @@ bmt::INI::File::write (std::wstring fname)
 
   fflush (fOut);
   fclose (fOut);
+
+  // Make Read-Only
+  SetFileAttributes (fname.c_str (), FILE_ATTRIBUTE_READONLY);
 }
 
 

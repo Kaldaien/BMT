@@ -39,7 +39,7 @@
 
 using namespace bmt;
 
-#define BMT_VERSION_STR L"0.50"
+#define BMT_VERSION_STR L"0.52"
 
 INT_PTR CALLBACK  Config (HWND, UINT, WPARAM, LPARAM);
 
@@ -1127,6 +1127,14 @@ void handle_window_radios (HWND hDlg, WORD ID)
       WMI::StartMonitoring ();
     }
   }
+
+  // Only enable this button in fullscreen mode...
+  Button_Enable (GetDlgItem (hDlg, IDC_VSYNC), (mode == 2));
+
+  if (mode != 2)
+    Button_SetCheck (GetDlgItem (hDlg, IDC_VSYNC), 0);
+  else
+    Button_SetCheck (GetDlgItem (hDlg, IDC_VSYNC), use_vsync->get_value ());
 }
 
 void setup_debug_utils (HWND hDlg, bool debug)
@@ -1184,7 +1192,7 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
       // Wow this code is ugly, it all needs to be wrapped...
       HINSTANCE hShell32 = LoadLibrary (L"shell32.dll");
-      HICON     hIcon = LoadIcon (hShell32, MAKEINTRESOURCE (16761));
+      HICON     hIcon    = LoadIcon    (hShell32, MAKEINTRESOURCE (16761));
 
       SIZE size;
       SendMessage (GetDlgItem (hDlg, IDOK), BM_SETIMAGE, IMAGE_ICON, (LPARAM)hIcon);
@@ -1229,6 +1237,11 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
       // Setup the config variables on first load only
       if (first_load) {
+        // Add the signatures at load-time, instead of save-time... this might improve
+        //  some reports of weird behavior. 
+        settings.import (signatures.settings);
+        engine.import   (signatures.engine);
+
         refresh_rate =
           static_cast <ParameterInt *> (
             g_ParameterFactory.create_parameter <int> (L"Refresh Rate")
@@ -1408,17 +1421,14 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
       refresh_rate->register_to_xml (FindNode (bmak_gamesettings, L"RESOLUTION"), L"RefreshRate");
       refresh_rate->register_to_ini (engine.get_file (), L"Engine.Client", L"MinDesiredFrameRate");
-      //refresh_rate->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_REFRESH_RATE)));
       refresh_rate->load ();
 
       res_x->register_to_xml (FindOption (bmak_gamesettings, L"ResolutionX"), L"Value");
       res_x->register_to_ini (settings.get_file (), L"SystemSettings", L"ResX");
-      //res_x->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_RES_X)));
       res_x->load ();
 
       res_y->register_to_xml (FindOption (bmak_gamesettings, L"ResolutionY"), L"Value");
       res_y->register_to_ini (settings.get_file (), L"SystemSettings", L"ResY");
-      //res_y->bind_to_control (new EditBox (GetDlgItem (hDlg, IDC_RES_Y)));
       res_y->load ();
 
       max_fps->register_to_ini (settings.get_file (), L"SystemSettings", L"MaxFPS");
@@ -1651,13 +1661,13 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       // Visual indication for TexGroup policy.
       switch (texgroup_profile->get_value ())
       {
-      default:
-      case 0:
-        Button_SetCheck (GetDlgItem (hDlg, IDC_DEFAULT_TEXGROUPS), TRUE);
-        break;
-      case 1:
-        Button_SetCheck (GetDlgItem (hDlg, IDC_OPTIMIZED_TEXGROUPS), TRUE);
-        break;
+        default:
+        case 0:
+          Button_SetCheck (GetDlgItem (hDlg, IDC_DEFAULT_TEXGROUPS), TRUE);
+          break;
+        case 1:
+          Button_SetCheck (GetDlgItem (hDlg, IDC_OPTIMIZED_TEXGROUPS), TRUE);
+          break;
       }
 
 
@@ -1727,6 +1737,7 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
       }
 
       if (LOWORD (wParam) == IDC_NV_DRIVER_TWEAKS) {
+        NVAPI::bmt_fullscreen = (mode == 2); // This is a hack based on another hack (see handle_window_radios), yuck.
         return (int)DialogBox (GetWindowInstance (hDlg), MAKEINTRESOURCE (IDD_DRIVER_TWEAKS), hDlg, DriverConfigNV);
       }
 
@@ -1755,6 +1766,10 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         streaming_profile->set_value (3);
         engine.import (std::wstring (streaming.fast));
         BMT_OptimizeStreamingMemory ();
+      }
+
+      if (LOWORD (wParam) == IDC_VSYNC) {
+        use_vsync->set_value (Button_GetCheck (GetDlgItem (hDlg, IDC_VSYNC)));
       }
 
       if (LOWORD (wParam) == IDC_DEFAULT_TEXGROUPS) {
@@ -2002,9 +2017,6 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         }
 
         bool cancel = false;
-
-        settings.import (signatures.settings);
-        engine.import   (signatures.engine);
 
         // System to make an automatic backup if INI files at save-time
         if (! BMT_HasBackupConfigFiles ()) {

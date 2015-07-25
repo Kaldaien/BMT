@@ -332,7 +332,12 @@ nvcfg_SLI::setup_ui (HWND hDlg)
   }
   else {
     ComboBox_Enable (hWndMode,        true);
-    Button_Enable   (hWndFramePacing, true);
+
+    // Pretty pointless in windowed-mode...
+    if (! bmt_fullscreen)
+      Button_Enable (hWndFramePacing, false);
+    else
+      Button_Enable (hWndFramePacing, true);
   }
 
   ComboBox_ResetContent (hWndMode);
@@ -368,6 +373,16 @@ nvcfg_VSYNC::setup_ui (HWND hDlg)
   hWndVSYNC    = GetDlgItem (hDlg, IDC_VSYNC);
   hWndSmooth   = GetDlgItem (hDlg, IDC_SMOOTH_VSYNC);
   hWndAdaptive = GetDlgItem (hDlg, IDC_ADAPTIVE_VSYNC);
+
+  // Pretty pointless in windowed-mode...
+  if (! bmt_fullscreen) {
+    EnableWindow (hWndVSYNC,    false);
+    EnableWindow (hWndAdaptive, false);
+  }
+  else {
+    EnableWindow (hWndAdaptive, true);
+    EnableWindow (hWndVSYNC,    true);
+  }
 
   ComboBox_ResetContent (hWndVSYNC);
 
@@ -850,3 +865,6 @@ NVAPI::CheckDriverVersion (void)
 
   return true;
 }
+
+bool NVAPI::bmt_fullscreen = false;
+bool NVAPI::nv_hardware    = true;

@@ -58,7 +58,10 @@ namespace NVAPI {
                           const char*   file_name);
 
   // Guilty until proven innocent
-  static bool nv_hardware = true;
+  extern bool nv_hardware;
+
+  // Was the tweak tool started while BMT was configured to run the game fullscreen?
+  extern bool bmt_fullscreen;
 
 }
 }
