@@ -1379,7 +1379,7 @@ NVAPI_INTERFACE NvAPI_GetPhysicalGPUsFromLogicalGPU(NvLogicalGpuHandle hLogicalG
 //! \retval ::NVAPI_INVALID_ARGUMENT              pCount is NULL
 //! \retval ::NVAPI_OK                            *pCount is set
 //! \retval ::NVAPI_NVIDIA_DEVICE_NOT_FOUND       no NVIDIA GPU driving a display was found
-//! \retval ::NVAPI_EXPECTED_PHYSICAL_GPU_HANDLE  hPhysicalGpu was not a physical GPU handle
+//! \retval ::NVAPI_EXPECTED_PHYSICAL_GPU_HANDLE  hPhysicalGpu was not a physical GPU handleis
 //! \retval ::NVAPI_NOT_SUPPORTED                 API call is not supported on current architecture
 //!
 //! \ingroup gpu

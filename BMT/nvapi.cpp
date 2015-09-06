@@ -199,11 +199,36 @@ bmt::NVAPI::CountPhysicalGPUs (void)
   return nv_gpu_count;
 }
 
+int
+NVAPI::CountSLIGPUs (void)
+{
+  static int nv_sli_count = -1;
+
+  DXGI_ADAPTER_DESC* adapters = NVAPI::EnumGPUs_DXGI ();
+
+  if (nv_sli_count == -1) {
+    if (nv_hardware) {
+      while (adapters != nullptr) {
+        if (adapters->AdapterLuid.LowPart > 1)
+          nv_sli_count++;
+
+        ++adapters;
+
+        if (*adapters->Description == '\0')
+          break;
+      }
+    }
+  }
+
+  return nv_sli_count;
+}
+
 /**
  * These were hoisted out of EnumGPUs_DXGI (...) to reduce stack size.
  **/
 static DXGI_ADAPTER_DESC   _nv_dxgi_adapters [64];
 static NvPhysicalGpuHandle _nv_dxgi_gpus     [64];
+static NvPhysicalGpuHandle phys [64];
 
 // This function does much more than it's supposed to -- consider fixing that!
 DXGI_ADAPTER_DESC*
@@ -222,7 +247,7 @@ bmt::NVAPI::EnumGPUs_DXGI (void)
     return _nv_dxgi_adapters;
   }
 
-  NvU32 gpu_count = 0;
+  NvU32 gpu_count     = 0;
 
   NVAPI_CALL (EnumPhysicalGPUs (_nv_dxgi_gpus, &gpu_count));
 
@@ -230,6 +255,20 @@ bmt::NVAPI::EnumGPUs_DXGI (void)
     DXGI_ADAPTER_DESC adapterDesc;
 
     NvAPI_ShortString name;
+
+    int   sli_group = 0;
+    int   sli_size  = 0;
+
+    NVAPI_CALL (EnumPhysicalGPUs (_nv_dxgi_gpus,     &gpu_count));
+
+    NvU32              phys_count;
+    NvLogicalGpuHandle logical;
+
+    NVAPI_CALL (GetLogicalGPUFromPhysicalGPU  (_nv_dxgi_gpus [i], &logical));
+    NVAPI_CALL (GetPhysicalGPUsFromLogicalGPU (logical, phys, &phys_count));
+
+    sli_group = (int)logical;
+    sli_size  = phys_count;
 
     NVAPI_CALL (GPU_GetFullName (_nv_dxgi_gpus [i], name));
 
@@ -241,6 +280,9 @@ bmt::NVAPI::EnumGPUs_DXGI (void)
     MultiByteToWideChar (CP_OEMCP, 0, name, -1, adapterDesc.Description, 64);
 
     adapterDesc.VendorId = 0x10de;
+
+    adapterDesc.AdapterLuid.HighPart = sli_group;
+    adapterDesc.AdapterLuid.LowPart  = sli_size;
 
     // NVIDIA's driver measures these numbers in KiB (to store as a 32-bit int)
     //  * We want the numbers in bytes (64-bit)
@@ -326,7 +368,7 @@ nvcfg_SLI::setup_ui (HWND hDlg)
   hWndMode        = GetDlgItem (hDlg, IDC_SLI_MODE);
   hWndFramePacing = GetDlgItem (hDlg, IDC_SMOOTH_VSYNC);
 
-  if (CountPhysicalGPUs () < 2) {
+  if (CountSLIGPUs () < 2) {
     ComboBox_Enable (hWndMode,        false);
     Button_Enable   (hWndFramePacing, false);
   }
@@ -717,7 +759,7 @@ void SaveDriverTweaksNV (HWND hDlg)
     NVAPI_CALL      (DRS_SetSetting (hSession, hProfile, &misc->power_policy));
 
     // Don't save this stuff if there's only 1 GPU...
-    if (CountPhysicalGPUs () > 1) {
+    if (CountSLIGPUs () > 1) {
       NVAPI_SET_DWORD (sli->mode, SLI_RENDERING_MODE_ID, sli->poll_mode ());
       NVAPI_CALL      (DRS_SetSetting (hSession, hProfile, &sli->mode));
 
@@ -852,11 +894,199 @@ TEST_SLI (void)
   //NvAPI_D3D_GetCurrentSLIState ()
 }
 
+#if 0
+std::wstring
+EDID_Audio_CodecName (uint8_t SAD1)
+{
+  switch ((SAD1 & 0x78) >> 3)
+  {
+  case 1:
+    return L"LPCM";
+  case 2:
+    return L"AC-3";
+  case 3:
+    return L"MPEG1";
+  case 4:
+    return L"MP3";
+  case 5:
+    return L"MPEG2";
+  case 6:
+    return L"AAC";
+  case 7:
+    return L"DTS";
+  case 8:
+    return L"ATRAC";
+  case 9:
+    return L"SACD";
+  case 10:
+    return L"Dolby Digital+";
+  case 11:
+    return L"DTS-HD";
+  case 12:
+    return L"Dolby TrueHD";
+  case 13:
+    return L"DST Audio";
+  case 14:
+    return L"Microsoft WMA Pro";
+  default:
+    return L"INVALID";
+  }
+}
+
+std::wstring
+EDID_Audio_SampleRates (uint8_t SAD2)
+{
+  std::wstring rates = L" ";
+
+  if (SAD2 & 0x1)
+    rates += L"32 kHz ";
+  if (SAD2 & 0x2)
+    rates += L"44 kHz ";
+  if (SAD2 & 0x4)
+    rates += L"48 kHz ";
+  if (SAD2 & 0x8)
+    rates += L"88 kHz ";
+  if (SAD2 & 0x10)
+    rates += L"96 kHz ";
+  if (SAD2 & 0x20)
+    rates += L"176 kHz ";
+  if (SAD2 & 0x40)
+    rates += L"192 kHz ";
+
+  return rates;
+}
+
+std::wstring
+EDID_Audio_BitRates (uint8_t SAD3)
+{
+  std::wstring rates = L" ";
+
+  if (SAD3 & 0x1)
+    rates += L"16-bit ";
+  if (SAD3 & 0x2)
+    rates += L"20-bit ";
+  if (SAD3 & 0x4)
+    rates += L"24-bit ";
+
+  return rates;
+}
+
+wchar_t wszFormat [16384];
+#endif
+
 bool
 NVAPI::CheckDriverVersion (void)
 {
   NvU32 ver;
   GetDriverVersion (&ver);
+
+#if 0
+  NV_MONITOR_CAPABILITIES mon_caps;
+  mon_caps.version = NV_MONITOR_CAPABILITIES_VER;
+  mon_caps.size = sizeof (NV_MONITOR_CAPABILITIES);
+
+  NvPhysicalGpuHandle gpus [16];
+  NvU32               gpu_count = 16;
+
+  NV_GPU_DISPLAYIDS disp_ids [4];
+  disp_ids [0].version = NV_GPU_DISPLAYIDS_VER;
+  disp_ids [1].version = NV_GPU_DISPLAYIDS_VER;
+  disp_ids [2].version = NV_GPU_DISPLAYIDS_VER;
+  disp_ids [3].version = NV_GPU_DISPLAYIDS_VER;
+
+  NvU32             disp_count = 4;
+
+  NVAPI_CALL (EnumPhysicalGPUs (gpus, &gpu_count));
+  NVAPI_CALL (GPU_GetConnectedDisplayIds (gpus [0], disp_ids, &disp_count, NV_GPU_CONNECTED_IDS_FLAG_SLI));
+
+  for (int i = 0; i < disp_count; i++) {
+    //NVAPI_CALL (DISP_GetMonitorCapabilities (disp_ids [i].displayId, &mon_caps));
+
+    NV_EDID edid;
+    edid.version    = NV_EDID_VER;
+    edid.sizeofEDID = NV_EDID_DATA_SIZE;
+
+    NVAPI_CALL (GPU_GetEDID (gpus [0], disp_ids [i].displayId, &edid));
+
+    if (((uint64_t *)edid.EDID_Data) [0] == 0x00ffffffffffff00)
+      MessageBox (NULL, L"We did it!", L"Neat", MB_OK);
+    else
+      return true;
+
+    uint8_t* data = &edid.EDID_Data [128 + 4];
+    while (true) {
+#if 0
+      uint8_t type = (*data & 0x7);// (*data & 0xE0) >> 5;
+      uint8_t adv = (*data & 0xF8) >> 5;// (*data & 0x1F);
+#else
+      uint8_t type = (*data & 0xE0) >> 5;
+      uint8_t adv  = (*data & 0x1F);
+#endif
+
+      data++;
+
+      wchar_t* pwszFormat = wszFormat;
+
+      if (type == 1) {
+        //MessageBox (NULL, L"Audio Block", L"EDID Debug", MB_OK);
+        uint8_t* end = data + adv;
+        while (data < end) {
+          pwszFormat += swprintf (pwszFormat, 16384, L"%s (%d Channels - [%s] @ (%s)))\n",
+            EDID_Audio_CodecName (*data).c_str (),
+              (*data & 0x7) + 1,
+            EDID_Audio_SampleRates (*(data + 1)).c_str (),
+            EDID_Audio_BitRates    (*(data + 2)).c_str ());
+
+          data += 3;
+        }
+
+        MessageBox (NULL, wszFormat, L"Audio Channels", MB_OK);
+      }
+
+      if (type == 2) {
+        //MessageBox (NULL, L"Video Block", L"EDID Debug", MB_OK);
+        data += adv;
+      }
+
+      if (type == 3) {
+        MessageBox (NULL, L"Vendor Block", L"EDID Debug", MB_OK);
+
+        if (data [8]) {
+          swprintf (wszFormat, 512, L"%d MHz Max TMDS", data [8] * 5);
+          MessageBox (NULL, wszFormat, L"Pixel Clock", MB_OK);
+        }
+
+        bool latency = (data [9] & 0x80);
+
+        if (latency) {
+          swprintf (wszFormat, 512, L"(%d : %d) ms <video : audio> latency", data [10] * 2 - 1, data [11] * 2 - 1);
+          MessageBox (NULL, wszFormat, L"Video Latency", MB_OK);
+        }
+          
+        //uint8_t* end = 
+        data += adv;
+      }
+
+      if (type == 4) {
+        //MessageBox (NULL, L"Speaker Block", L"EDID Debug", MB_OK);
+        data += adv;
+      }
+
+      if (data > &edid.EDID_Data [127] + edid.EDID_Data [128 + 2])
+        break;
+    }
+
+    //NvAPI_GetAssociatedNvidiaDisplayName (disp_ids [i]., disp_name);
+    //MessageBoxA (NULL, disp_name, "Test", MB_OK);
+
+    //wchar_t wszSummary [1024];
+    //disp_ids [i].connectorType
+
+    //swprintf (wszSummary, 1024, L"%d ms Latency\n", mon_caps.data.vcdb.quantizationRangeYcc);// mon_caps.data.vsdb.supportDeepColor36bits);// mon_caps.data.vsdb.videoLatency);
+    //MessageBox (NULL, wszSummary, L"Monitor Info", MB_OK);
+    //mon_caps.data.vsdb.videoLatency;
+  }
+#endif
 
   return ver >= 35330;
   if (ver < 35330) {

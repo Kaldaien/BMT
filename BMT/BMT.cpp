@@ -39,7 +39,7 @@
 
 using namespace bmt;
 
-#define BMT_VERSION_STR L"0.52"
+#define BMT_VERSION_STR L"0.55"
 
 INT_PTR CALLBACK  Config (HWND, UINT, WPARAM, LPARAM);
 
@@ -545,6 +545,14 @@ void setup_physx_properties (HWND hDlg)
   else {
     Button_Enable (GetDlgItem (hDlg, IDC_HARDWARE_PHYSX), false);
     hardware_physx->set_value (true);
+  }
+
+  Button_Enable (GetDlgItem (hDlg, IDC_INTERACTIVE_SMOKE),  !hardware_physx->get_value ());
+  Button_Enable (GetDlgItem (hDlg, IDC_INTERACTIVE_DEBRIS), !hardware_physx->get_value ());
+
+  if (hardware_physx->get_value ()) {
+    interactive_debris->set_value (false);
+    interactive_smoke->set_value  (false);
   }
 
   Button_Enable   (GetDlgItem (hDlg, IDC_HIGH_PHYSX),    false);
@@ -1216,7 +1224,7 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
       FreeLibrary (hShell32);
 
-      SetWindowText (hDlg, L"Batman Tweak v " BMT_VERSION_STR L" (Beta)");
+      SetWindowText (hDlg, L"Batman Tweak v " BMT_VERSION_STR L" RC3");
 
       hWndApp = hDlg;
 
@@ -1607,6 +1615,9 @@ Config (HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
       std::wstring gpu_str = DXGI::GetGPUInfo ();
 
+      HFONT font = CreateFont (11, 0, 0, 0, FW_LIGHT, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_NATURAL_QUALITY, MONO_FONT, L"Consolas");
+
+      SetWindowFont (GetDlgItem (hDlg, IDC_GPUINFO), font, true);
       Edit_SetText (GetDlgItem (hDlg, IDC_GPUINFO), gpu_str.c_str ());
 
 

@@ -433,7 +433,7 @@ bmt::INI::File::write (std::wstring fname)
   errno_t ret;
 
   // Strip Read-Only
-  SetFileAttributes (fname.c_str (), FILE_ATTRIBUTE_NORMAL);
+  BMT_SetNormalFileAttribs (fname);
 
   TRY_FILE_IO (_wfopen_s (&fOut, fname.c_str (), L"w,ccs=UTF-16LE"), fname.c_str (), ret);
 

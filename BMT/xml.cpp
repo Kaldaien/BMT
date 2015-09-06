@@ -126,6 +126,17 @@ bmt::XML::SaveXML (void)
 
   fflush (fXML);
   fclose (fXML);
+
+  //
+  // Windows 10 File Permission Fixes
+  //
+
+  // Normalize file ownership and attributes (Win10 fix)
+  BMT_SetNormalFileAttribs (wszXML);
+
+  // Now normalize the directory as a whole
+  wsprintf (wszXML, L"%s\\WB Games\\Batman Arkham Knight", documents_dir.c_str ());
+  BMT_SetNormalFileAttribs (wszXML);
 }
 
 bool
@@ -135,7 +146,18 @@ bmt::XML::LoadXML (void)
 
   std::wstring documents_dir = BMT_GetDocumentsDir ();
 
+  //
+  // Windows 10 File Permission Fixes
+  //
+
+  // Normalize the directory as a whole
+  wsprintf (wszXML, L"%s\\WB Games\\Batman Arkham Knight", documents_dir.c_str ());
+  BMT_SetNormalFileAttribs (wszXML);
+
   wsprintf (wszXML, L"%s\\WB Games\\Batman Arkham Knight\\GFXSettings.BatmanArkhamKnight.xml", documents_dir.c_str ());
+
+  // Normalize file ownership and attributes (Win10 fix)
+  BMT_SetNormalFileAttribs (wszXML);
 
   FILE* fXML;
   errno_t ret = _wfopen_s (&fXML, wszXML, L"r,ccs=UTF-16LE");

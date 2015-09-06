@@ -35,6 +35,7 @@ namespace NVAPI {
   BOOL InitializeLibrary (void);
   BOOL UnloadLibrary     (void);
 
+  int  CountSLIGPUs      (void);
   int  CountPhysicalGPUs (void);
   DXGI_ADAPTER_DESC*
        EnumGPUs_DXGI     (void);

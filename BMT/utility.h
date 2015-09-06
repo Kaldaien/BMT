@@ -31,6 +31,7 @@ bool          BMT_HasBackupConfigFiles (void);
 std::wstring  BMT_GetConfigFileTime    (void);
 void          BMT_CreateBackupConfig   (void);
 void          BMT_RestoreConfigFiles   (void);
+void          BMT_SetNormalFileAttribs (std::wstring file);
 
 std::wstring  BMT_GetBackupFileTime    (void);
 std::wstring  BMT_GetConfigFileTime    (void);
