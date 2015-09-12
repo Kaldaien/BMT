@@ -45,7 +45,7 @@
 #define IDC_BALANCED_STREAMING                  1014
 #define IDC_FAST_STREAMING                      1015
 #define IDC_DEFAULT_TEXGROUPS                   1016
-#define IDC_OPTIMIZED_TEXGROUPS                 1017
+#define IDC_QUALITY_TEXGROUPS                   1017
 #define IDC_LOW_PHYSX                           1018
 #define IDC_ULTRA_PHYSX                         1022
 #define IDC_HIGH_PHYSX                          1023

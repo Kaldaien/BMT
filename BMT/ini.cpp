@@ -466,7 +466,7 @@ bmt::INI::File::write (std::wstring fname)
   fclose (fOut);
 
   // Make Read-Only
-  SetFileAttributes (fname.c_str (), FILE_ATTRIBUTE_READONLY);
+  ////SetFileAttributes (fname.c_str (), FILE_ATTRIBUTE_READONLY);
 }
 
 

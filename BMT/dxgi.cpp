@@ -538,7 +538,8 @@ DXGI::GetGPUInfo (void)
         (float)adapter_descs [i].SharedSystemMemory / 1024.0f / 1024.0f / 1024.0f,
         memory_type.width, ram_type > 7 ? L"GDDR5" : L"GDDR3",
         mem_parts,
-        (model >> 12) & 0xf, (model >> 16) & 0xf,
+        // 2.0  or  1.(model >> 8)
+        (model >> 12) & 0xf, ((model >> 12) & 0xf) == 2 ? 0 : (model >> 8) & 0xf,
         cuda_cores,
         pipes, subpipes,
         //TPC, SM, SP,
