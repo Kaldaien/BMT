@@ -160,11 +160,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BMT.cpp" />
-    <ClCompile Include="d3d11.cpp" />
+    <ClCompile Include="dxgi.cpp" />
     <ClCompile Include="ini.cpp" />
     <ClCompile Include="nvapi.cpp" />
     <ClCompile Include="parameter.cpp" />
     <ClCompile Include="utility.cpp" />
+    <ClCompile Include="wmi.cpp" />
     <ClCompile Include="xml.cpp" />
   </ItemGroup>
   <ItemGroup>

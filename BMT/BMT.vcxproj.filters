@@ -39,15 +39,6 @@
     <ClInclude Include="parameter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="nvapi.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="dxgi.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="wmi.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BMT.cpp">
@@ -68,9 +59,6 @@
     <ClCompile Include="nvapi.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="export.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="dxgi.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -88,6 +76,9 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="nv.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="icon1.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>
